@@ -27,3 +27,37 @@
   <script src="builder.js"></script>
 </body>
 </html>
+<form id="builderForm">
+  <label for="businessName">Business Name:</label>
+  <input id="businessName" name="businessName" required />
+
+  <label for="description">Business Description:</label>
+  <textarea id="description" name="description" required></textarea>
+
+  <label for="brandColor">Brand Color:</label>
+  <input id="brandColor" name="brandColor" type="color" value="#0ea5e9" />
+
+  <label for="logo">Logo (optional):</label>
+  <input id="logo" name="logo" type="file" accept="image/*" />
+
+  <label for="gallery">Gallery images (optional):</label>
+  <input id="gallery" name="gallery" type="file" accept="image/*" multiple />
+
+  <label for="ctaText">Call-to-Action Text:</label>
+  <input id="ctaText" name="ctaText" placeholder="Contact Us" />
+
+  <label for="email">Contact Email:</label>
+  <input id="email" name="email" type="email" placeholder="hello@example.com" />
+
+  <label for="phone">Phone (optional):</label>
+  <input id="phone" name="phone" placeholder="(555) 123-4567" />
+
+  <label for="instagram">Instagram URL (optional):</label>
+  <input id="instagram" name="instagram" placeholder="https://instagram.com/yourhandle" />
+
+  <button type="submit">Generate Website</button>
+</form>
+
+<button id="checkoutBtn">Buy Full Website ($20)</button>
+
+<script src="builder.js"></script>
