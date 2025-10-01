@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "netlify dev",
-    "build": "echo 'Add your build command here'",
     "deploy": "netlify deploy --prod"
   },
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2" 
+    "express": "^4.18.2",
+    "stripe": "^16.0.0"
   },
   "devDependencies": {
     "netlify-cli": "^12.0.0"
