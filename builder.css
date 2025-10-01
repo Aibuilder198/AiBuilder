@@ -1,43 +1,83 @@
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: #f5f5f5;
-}
-
-.container {
-  max-width: 600px;
-  margin: 50px auto;
-  background: white;
+/* Full-page hero section with background */
+.hero {
+  min-height: 100vh;
+  background: url("https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1600&q=80")
+    no-repeat center center/cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-h1 {
+/* Dark overlay box */
+.hero .overlay {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 700px;
+  width: 100%;
+  text-align: left;
+}
+
+/* Headline + tagline */
+.hero h1 {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
   text-align: center;
 }
 
-form {
+.hero p {
+  font-size: 1.1rem;
   margin-bottom: 20px;
+  text-align: center;
 }
 
-input, textarea {
+/* Form styles */
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin: 10px 0 5px;
+}
+
+input, textarea, select {
   width: 100%;
-  margin-bottom: 10px;
-  padding: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
 }
 
+/* Buttons */
 button {
-  background: #007bff;
+  background: #0ea5e9;
   color: white;
   border: none;
-  padding: 10px;
-  width: 100%;
-  border-radius: 5px;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s ease;
 }
 
 button:hover {
-  background: #0056b3;
+  background: #0284c7;
+}
+
+/* Download link (from preview) */
+#downloadSite {
+  display: inline-block;
+  margin-top: 12px;
+  background: #0ea5e9;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  text-decoration: none;
 }
