@@ -9,10 +9,10 @@ async function loadMeta() {
     return {
       siteName: "AI Website Builder",
       features: { builderForm: true, checkout: true },
-      stripe: { priceId: "price_123", currency: "usd", amount: 2000 },
+      stripe: { priceId: "price_1SDFSNAmJkffDNdt0pAhcn8Y", currency: "usd", amount: 2000 },
       messages: {
-        success: "✅ Payment Successful! Your AI-generated website will be emailed shortly.",
-        cancel: "❌ Payment Canceled. Please try again."
+        success: "Payment Successful! Your AI-generated website will be emailed shortly.",
+        cancel: "Payment Canceled. Please try again."
       }
     };
   }
@@ -37,17 +37,24 @@ async function loadMeta() {
   // Stripe Checkout button
   if (meta.features.checkout) {
     document.getElementById("checkoutBtn").addEventListener("click", async () => {
-      const response = await fetch("/.netlify/functions/create-checkout", {
+      const res = await fetch("/.netlify/functions/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: [{ price: meta.stripe.priceId, quantity: 1 }],
+          items: [{ price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", quantity: 1 }],
           success_url: `${window.location.origin}/success`,
           cancel_url: `${window.location.origin}/cancel`
         })
       });
 
-      const data = await response.json();
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Checkout failed:", text);
+        alert(`Checkout failed: ${text}`);
+        return;
+      }
+
+      const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       }
