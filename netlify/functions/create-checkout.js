@@ -1,7 +1,6 @@
 // netlify/functions/create-checkout.js
 const Stripe = require('stripe');
 
-// Ensure key is present
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
@@ -21,15 +20,15 @@ exports.handler = async (event) => {
       throw new Error('No items provided. Expected items: [{ price: "price_xxx", quantity: 1 }]');
     }
 
-    // Fallback URLs if not sent by the client
+    // Fallback URLs if client didn’t send any
     const origin = process.env.URL || 'http://localhost:8888';
     const successURL = success_url || `${origin}/success`;
-    const cancelURL = cancel_url || `${origin}/cancel`;
+    const cancelURL  = cancel_url  || `${origin}/cancel`;
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      line_items: items,               // e.g. [{ price: 'price_123', quantity: 1 }]
+      line_items: items,               // e.g., [{ price: 'price_1SDFSNAmJkffDNdt0pAhcn8Y', quantity: 1 }]
       success_url: successURL,
       cancel_url: cancelURL,
       billing_address_collection: 'auto',
@@ -45,11 +44,8 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: err.message,
-        // uncomment during debugging ONLY:
-        // stack: err.stack,
-      }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };
+
