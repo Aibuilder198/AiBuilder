@@ -7,7 +7,7 @@
     "checkout": true
   },
   "stripe": {
-    "priceId": "price_123", 
+    "priceId": "price_1SDFSNAmJkffDNdt0pAhcn8Y",
     "currency": "usd",
     "amount": 2000
   },
