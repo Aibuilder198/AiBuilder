@@ -7,57 +7,79 @@
   <link rel="stylesheet" href="builder.css">
 </head>
 <body>
-  <div class="container">
-    <h1>AI Website Builder</h1>
-    <p>Create a simple business website powered by AI.</p>
+  <section class="hero">
+    <div class="overlay">
+      <h1>🚀 Build Your Business Website Instantly</h1>
+      <p>Powered by AI — safe, simple, and secure.</p>
 
-    <form id="builderForm">
-      <label for="businessName">Business Name:</label>
-      <input type="text" id="businessName" name="businessName" required>
+      <form id="builderForm">
+        <label for="businessName">Business Name:</label>
+        <input id="businessName" name="businessName" required />
 
-      <label for="description">Business Description:</label>
-      <textarea id="description" name="description" required></textarea>
+        <label for="description">Business Description:</label>
+        <textarea id="description" name="description" required></textarea>
 
-      <button type="submit">Generate Website</button>
-    </form>
+        <label for="brandColor">Brand Color:</label>
+        <input id="brandColor" name="brandColor" type="color" value="#0ea5e9" />
 
-    <button id="checkoutBtn">Buy Full Website ($20)</button>
-  </div>
+        <label for="theme">Theme:</label>
+        <select id="theme" name="theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="ocean">Ocean</option>
+          <option value="sunset">Sunset</option>
+          <option value="forest">Forest</option>
+        </select>
+
+        <label for="font">Font:</label>
+        <select id="font" name="font">
+          <option value="system-ui">System UI</option>
+          <option value="Inter">Inter</option>
+          <option value="Poppins">Poppins</option>
+          <option value="Playfair Display">Playfair Display</option>
+        </select>
+
+        <label for="logo">Logo (optional):</label>
+        <input id="logo" name="logo" type="file" accept="image/*" />
+
+        <label for="gallery">Gallery Images (optional):</label>
+        <input id="gallery" name="gallery" type="file" accept="image/*" multiple />
+
+        <label for="ctaText">Call-to-Action Text:</label>
+        <input id="ctaText" name="ctaText" placeholder="Contact Us" />
+
+        <label for="email">Contact Email:</label>
+        <input id="email" name="email" type="email" placeholder="hello@example.com" />
+
+        <label for="phone">Phone (optional):</label>
+        <input id="phone" name="phone" placeholder="(555) 123-4567" />
+
+        <label for="instagram">Instagram URL (optional):</label>
+        <input id="instagram" name="instagram" placeholder="https://instagram.com/yourhandle" />
+
+        <label for="services">Services (one per line):</label>
+        <textarea id="services" name="services"></textarea>
+
+        <label for="testimonials">Testimonials (Name | Quote per line):</label>
+        <textarea id="testimonials" name="testimonials"></textarea>
+
+        <label for="hours">Hours (one per line):</label>
+        <textarea id="hours" name="hours"></textarea>
+
+        <label for="address">Business Address:</label>
+        <input id="address" name="address" placeholder="123 Main St, City, Country" />
+
+        <label>
+          <input id="remember" type="checkbox" /> Remember my data for next time
+        </label>
+
+        <button type="submit">Generate Website</button>
+      </form>
+
+      <button id="checkoutBtn">Buy Full Website ($20)</button>
+    </div>
+  </section>
 
   <script src="builder.js"></script>
 </body>
 </html>
-<form id="builderForm">
-  <label for="businessName">Business Name:</label>
-  <input id="businessName" name="businessName" required />
-
-  <label for="description">Business Description:</label>
-  <textarea id="description" name="description" required></textarea>
-
-  <label for="brandColor">Brand Color:</label>
-  <input id="brandColor" name="brandColor" type="color" value="#0ea5e9" />
-
-  <label for="logo">Logo (optional):</label>
-  <input id="logo" name="logo" type="file" accept="image/*" />
-
-  <label for="gallery">Gallery images (optional):</label>
-  <input id="gallery" name="gallery" type="file" accept="image/*" multiple />
-
-  <label for="ctaText">Call-to-Action Text:</label>
-  <input id="ctaText" name="ctaText" placeholder="Contact Us" />
-
-  <label for="email">Contact Email:</label>
-  <input id="email" name="email" type="email" placeholder="hello@example.com" />
-
-  <label for="phone">Phone (optional):</label>
-  <input id="phone" name="phone" placeholder="(555) 123-4567" />
-
-  <label for="instagram">Instagram URL (optional):</label>
-  <input id="instagram" name="instagram" placeholder="https://instagram.com/yourhandle" />
-
-  <button type="submit">Generate Website</button>
-</form>
-
-<button id="checkoutBtn">Buy Full Website ($20)</button>
-
-<script src="builder.js"></script>
