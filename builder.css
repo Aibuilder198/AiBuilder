@@ -1,83 +1,152 @@
-/* Full-page hero section with background */
-.hero {
-  min-height: 100vh;
-  background: url("https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1600&q=80")
-    no-repeat center center/cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  position: relative;
-  padding: 20px;
+/* ============ Base / Reset ============ */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #0f172a;
+  background: #f5f7fb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark overlay box */
-.hero .overlay {
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 30px;
-  border-radius: 12px;
-  max-width: 700px;
+/* ============ Page Container ============ */
+.container {
+  max-width: 960px;
+  margin: 32px auto 48px;
+  padding: 0 16px;
+}
+
+.container > h1 {
+  margin: 0 0 18px;
+  font-size: 28px;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+/* ============ Card-like Form ============ */
+#builderForm {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+  padding: 16px;
+}
+
+#builderForm label {
+  display: block;
+  font-size: 14px;
+  margin: 12px 0 6px;
+  color: #334155;
+}
+
+#builderForm input[type="text"],
+#builderForm input[type="email"],
+#builderForm input[type="url"],
+#builderForm input[type="color"],
+#builderForm textarea,
+#builderForm select {
   width: 100%;
-  text-align: left;
-}
-
-/* Headline + tagline */
-.hero h1 {
-  font-size: 2.2rem;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.hero p {
-  font-size: 1.1rem;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-/* Form styles */
-form {
-  display: flex;
-  flex-direction: column;
-}
-
-label {
-  margin: 10px 0 5px;
-}
-
-input, textarea, select {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 6px;
-  border: none;
-  font-size: 1rem;
-}
-
-/* Buttons */
-button {
-  background: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 12px;
-  margin-top: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.3s ease;
-}
-
-button:hover {
-  background: #0284c7;
-}
-
-/* Download link (from preview) */
-#downloadSite {
-  display: inline-block;
-  margin-top: 12px;
-  background: #0ea5e9;
-  color: white;
-  padding: 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+#builderForm textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+#builderForm input:focus,
+#builderForm textarea:focus,
+#builderForm select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* File inputs spacing */
+#builderForm input[type="file"] { padding: 8px 0; }
+
+/* Section headings inside the form */
+#builderForm h3 {
+  margin: 18px 0 8px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+/* ============ Primary Buttons ============ */
+button {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 16px;
+  margin-top: 14px;
+  cursor: pointer;
+  transition: background .15s ease, transform .03s ease;
+}
+
+button:hover { background: #0284c7; }
+button:active { transform: translateY(1px); }
+button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Secondary CTA link (used for download link in preview) */
+a.cta {
+  display: inline-block;
+  background: #0ea5e9;
+  color: #fff;
   text-decoration: none;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+a.cta:hover { background: #0284c7; }
+
+/* ============ Checkout Button (outside form) ============ */
+#checkoutBtn {
+  display: inline-block;
+  margin: 16px 0 0;
+}
+
+/* ============ Preview Area ============ */
+#previewArea {
+  margin-top: 18px;
+}
+
+#previewArea iframe {
+  width: 100%;
+  height: 620px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+/* ============ Responsive Tweaks ============ */
+@media (max-width: 720px) {
+  .container {
+    margin-top: 20px;
+  }
+
+  #builderForm {
+    padding: 14px;
+  }
+
+  .container > h1 {
+    font-size: 24px;
+  }
+
+  #previewArea iframe {
+    height: 520px;
+  }
 }
