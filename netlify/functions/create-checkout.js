@@ -2,6 +2,12 @@
 const Stripe = require('stripe');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' });
 
+function chunkString(str, size) {
+  const out = [];
+  for (let i = 0; i < str.length; i += size) out.push(str.slice(i, i + size));
+  return out;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: { Allow: 'POST' }, body: 'Method Not Allowed' };
@@ -18,19 +24,27 @@ exports.handler = async (event) => {
     const successURL = success_url || `${origin}/success`;
     const cancelURL  = cancel_url  || `${origin}/cancel`;
 
-    // Store form/site data in metadata so the webhook can email it
+    // ---- Build metadata safely within Stripe limits ----
+    // Stripe: max 50 keys; each value max 500 chars.
     const metadata = {};
     if (sitePayload?.businessName) metadata.businessName = sitePayload.businessName.slice(0, 200);
     if (sitePayload?.description)  metadata.description  = sitePayload.description.slice(0, 500);
-    if (sitePayload?.htmlBase64)   metadata.htmlBase64   = sitePayload.htmlBase64; // can be large, but OK
+
+    if (sitePayload?.htmlBase64) {
+      const parts = chunkString(sitePayload.htmlBase64, 480); // leave headroom < 500
+      const maxParts = Math.min(parts.length, 50 - Object.keys(metadata).length - 1); // keep under 50 keys
+      for (let i = 0; i < maxParts; i++) {
+        metadata[`html_${i}`] = parts[i];
+      }
+      metadata.html_parts = String(maxParts); // record how many we stored
+    }
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',                 // you’re using a one-time price
+      mode: 'payment',
       line_items: items,
       success_url: successURL,
       cancel_url: cancelURL,
       billing_address_collection: 'auto',
-      // Checkout will collect the buyer’s email for us:
       metadata
     });
 
