@@ -1,9 +1,8 @@
 // netlify/functions/stripe-webhook.js
 const Stripe = require('stripe');
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2023-10-16' });
 
-// Simple mail sender via Resend HTTP API (no extra npm deps needed)
+// Minimal Resend helper (same as before)
 async function sendEmail({ to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from   = process.env.FROM_EMAIL || 'no-reply@example.com';
@@ -11,22 +10,10 @@ async function sendEmail({ to, subject, html }) {
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html
-    })
+    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html })
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Resend failed: ${text}`);
-  }
+  if (!res.ok) throw new Error(`Resend failed: ${await res.text()}`);
 }
 
 exports.handler = async (event) => {
@@ -40,7 +27,6 @@ exports.handler = async (event) => {
 
   let stripeEvent;
   try {
-    // IMPORTANT: Netlify gives us the raw body string; pass as-is
     stripeEvent = stripe.webhooks.constructEvent(event.body, sig, whSecret);
   } catch (err) {
     console.error('Signature verification failed:', err.message);
@@ -50,37 +36,44 @@ exports.handler = async (event) => {
   try {
     if (stripeEvent.type === 'checkout.session.completed') {
       const session = stripeEvent.data.object;
-
-      // Email to the buyer (Stripe collects the email on Checkout)
-      const customerEmail = session.customer_details?.email;
       const md = session.metadata || {};
+      const customerEmail = session.customer_details?.email;
 
-      // Build the attachment-as-link (inline HTML). The builder HTML was sent base64 in metadata
+      // ---- Reassemble HTML from chunked metadata ----
+      let base64 = '';
+      const partsCount = parseInt(md.html_parts || '0', 10);
+      if (partsCount > 0) {
+        let chunks = [];
+        for (let i = 0; i < partsCount; i++) {
+          const piece = md[`html_${i}`] || '';
+          chunks.push(piece);
+        }
+        base64 = chunks.join('');
+      } else if (md.htmlBase64) {
+        base64 = md.htmlBase64;
+      }
+
       let siteHtml = '';
-      if (md.htmlBase64) {
-        // decode base64 → utf8
-        siteHtml = Buffer.from(md.htmlBase64, 'base64').toString('utf8');
+      if (base64) {
+        try {
+          siteHtml = Buffer.from(base64, 'base64').toString('utf8');
+        } catch {
+          siteHtml = `<html><body><h1>${md.businessName || 'Your Site'}</h1><p>${md.description || ''}</p></body></html>`;
+        }
       } else {
-        // fallback: minimal page if metadata missing
         siteHtml = `<html><body><h1>${md.businessName || 'Your Site'}</h1><p>${md.description || ''}</p></body></html>`;
       }
 
       const subject = `Your AI Website: ${md.businessName || 'Website'}`;
 
-      // 1) Email the buyer (if we have an email)
       if (customerEmail) {
         await sendEmail({
           to: customerEmail,
           subject,
-          html: `
-            <p>Thanks for your purchase! Your AI-generated site is below.</p>
-            <hr/>
-            ${siteHtml}
-          `
+          html: `<p>Thanks for your purchase! Your AI-generated site is below.</p><hr/>${siteHtml}`
         });
       }
 
-      // 2) Email you (admin copy)
       const adminEmail = process.env.ADMIN_EMAIL;
       if (adminEmail) {
         await sendEmail({
@@ -91,8 +84,7 @@ exports.handler = async (event) => {
             <p>Customer: ${customerEmail || 'unknown'}</p>
             <p><strong>Business:</strong> ${md.businessName || ''}</p>
             <p><strong>Description:</strong> ${md.description || ''}</p>
-            <hr/>
-            ${siteHtml}
+            <hr/>${siteHtml}
           `
         });
       }
