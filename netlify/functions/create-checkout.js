@@ -1,112 +1,98 @@
 // netlify/functions/create-checkout.js
-// Complete drop-in for creating Stripe Checkout Sessions
-// Supports both one-time payments (mode: "payment") and subscriptions (mode: "subscription")
+// Create Stripe Checkout Session via HTTPS (no npm deps)
 
-const Stripe = require("stripe");
+"use strict";
 
-// IMPORTANT: set STRIPE_SECRET_KEY in your Netlify environment variables
-// Site dashboard → Site settings → Build & deploy → Environment → Environment variables
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2023-10-16",
-});
-
-/**
- * Chunk a long string so it fits into Stripe metadata (40 key limit, 500 chars each).
- * We use a conservative chunk size to stay well under per-key limits.
- */
-function chunkString(str, size) {
-  const out = [];
-  for (let i = 0; i < str.length; i += size) out.push(str.slice(i, i + size));
-  return out;
-}
+const qs = (obj) =>
+  Object.entries(obj)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers: { Allow: "POST", "Content-Type": "text/plain" },
-      body: "Method Not Allowed",
-    };
+    return { statusCode: 405, headers: { Allow: "POST" }, body: "Method Not Allowed" };
   }
 
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY is not set in environment variables.");
-    }
+    const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+    if (!STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const {
-      // required
-      items = [], // [{ price: "price_xxx", quantity: 1 }]
-      // optional
-      mode, // "payment" (default) | "subscription"
+      items = [],                 // [{ price: "...", quantity: 1 }]
+      mode = "payment",           // "payment" | "subscription"
       success_url,
       cancel_url,
-      // optional, used to reconstruct and/or email the generated site
-      sitePayload, // { businessName, description, htmlBase64 }
-      // optional, helpful for your own records
+      sitePayload = {},           // { businessName, description, htmlBase64 }
       client_reference_id,
-      planName, // e.g., "Basic", "Pro", "Business"
+      planName
     } = JSON.parse(event.body || "{}");
 
     if (!Array.isArray(items) || items.length === 0) {
-      throw new Error(
-        "No line items provided. Expected items: [{ price: 'price_...', quantity: 1 }]"
-      );
+      throw new Error("No items provided. Expected items: [{ price: 'price_...', quantity: 1 }]");
     }
 
-    // Resolve URLs (Netlify automatically sets process.env.URL on production deploys)
     const origin = process.env.URL || "http://localhost:8888";
     const successURL = success_url || `${origin}/success`;
-    const cancelURL = cancel_url || `${origin}/cancel`;
+    const cancelURL  = cancel_url  || `${origin}/cancel`;
 
-    // ---- Build metadata (safe, chunked) ----
-    // Stripe Checkout metadata key limit: 40 keys per object. Keep it compact.
+    // Build metadata (Stripe limit: max 40 keys)
     const metadata = {};
+    if (sitePayload.businessName) metadata.businessName = String(sitePayload.businessName).slice(0, 200);
+    if (sitePayload.description)  metadata.description  = String(sitePayload.description).slice(0, 500);
+    if (planName)                 metadata.planName     = String(planName).slice(0, 100);
 
-    if (sitePayload?.businessName) {
-      metadata.businessName = String(sitePayload.businessName).slice(0, 200);
-    }
-    if (sitePayload?.description) {
-      metadata.description = String(sitePayload.description).slice(0, 500);
-    }
-    if (planName) {
-      metadata.planName = String(planName).slice(0, 100);
-    }
-
-    // If you’re passing the full generated HTML (base64), chunk it
-    if (sitePayload?.htmlBase64) {
-      const parts = chunkString(String(sitePayload.htmlBase64), 480); // conservative per-key size
-      const maxParts = Math.min(parts.length, 48); // leave room for other keys
-      for (let i = 0; i < maxParts; i++) {
-        metadata[`html_${i}`] = parts[i];
-      }
-      metadata.html_parts = String(maxParts);
+    // Chunk the generated HTML (base64) into metadata keys
+    if (sitePayload.htmlBase64) {
+      const s = String(sitePayload.htmlBase64);
+      const size = 480; // conservative per-key size
+      const parts = [];
+      for (let i = 0; i < s.length; i += size) parts.push(s.slice(i, i + size));
+      const max = Math.min(parts.length, 48);
+      for (let i = 0; i < max; i++) metadata[`html_${i}`] = parts[i];
+      metadata.html_parts = String(max);
       metadata.html_encoding = "base64";
     }
 
-    // ---- Create Checkout Session ----
-    const session = await stripe.checkout.sessions.create({
-      mode: mode === "subscription" ? "subscription" : "payment",
-      line_items: items,
-      success_url: successURL,
-      cancel_url: cancelURL,
-      billing_address_collection: "auto",
-      allow_promotion_codes: true,
-      client_reference_id: client_reference_id || undefined,
-      metadata,
+    // Stripe expects application/x-www-form-urlencoded
+    const body = new URLSearchParams();
+    body.append("mode", mode === "subscription" ? "subscription" : "payment");
+    body.append("success_url", successURL);
+    body.append("cancel_url", cancelURL);
+    if (client_reference_id) body.append("client_reference_id", client_reference_id);
+
+    // line_items array
+    items.forEach((it, idx) => {
+      body.append(`line_items[${idx}][price]`, it.price);
+      body.append(`line_items[${idx}][quantity]`, String(it.quantity || 1));
     });
+
+    // metadata fields
+    Object.entries(metadata).forEach(([k, v]) => {
+      body.append(`metadata[${k}]`, String(v));
+    });
+
+    const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      console.error("Stripe error:", data);
+      return { statusCode: resp.status, body: JSON.stringify(data) };
+    }
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: session.url, id: session.id }),
+      body: JSON.stringify({ url: data.url, id: data.id }),
     };
   } catch (err) {
     console.error("create-checkout error:", err);
-    return {
-      statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
