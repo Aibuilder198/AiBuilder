@@ -1,17 +1,18 @@
 {
   "name": "my-netlify-project",
   "version": "1.0.0",
-  "description": "A simple Netlify project with serverless functions",
+  "description": "A simple Netlify project with serverless functions and Stripe checkout",
   "main": "index.js",
   "scripts": {
     "start": "netlify dev",
+    "build": "echo 'No build step required'",
     "deploy": "netlify deploy --prod"
   },
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "stripe": "^16.0.0"
+    "stripe": "^14.0.0"
   },
   "devDependencies": {
     "netlify-cli": "^12.0.0"
