@@ -2,104 +2,117 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Website Builder</title>
-  <link rel="stylesheet" href="builder.css" />
+  <link rel="stylesheet" href="builder.css"/>
 </head>
 <body>
   <div class="container">
-    <h1>Create a Simple Business Website powered by AI</h1>
+    <h1>Build a Beautiful Website in Minutes</h1>
+
+    <!-- Pricing / Plans -->
+    <form id="planForm" class="card" style="margin-bottom:16px;">
+      <h3>Choose your plan</h3>
+      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
+        <input type="radio" name="plan" value="basic" checked />
+        <strong>Basic — $20 one-time</strong> · Single page, logo + 3 gallery images, About & Contact
+      </label>
+      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
+        <input type="radio" name="plan" value="pro" />
+        <strong>Pro — $29/month</strong> · Everything in Basic + Services, Testimonials, 12 gallery images, SEO tags, Maps, Contact Form
+      </label>
+      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
+        <input type="radio" name="plan" value="business" />
+        <strong>Business — $79/month</strong> · Everything in Pro + Templates, Color Palettes, Analytics, Social embeds (best for growth)
+      </label>
+    </form>
+
     <form id="builderForm">
-      <label for="businessName">Business Name:</label>
-      <input type="text" id="businessName" required />
+      <!-- Basic -->
+      <label for="businessName">Business Name</label>
+      <input id="businessName" required placeholder="Sunrise Coffee Co."/>
 
-      <label for="description">Business Description:</label>
-      <textarea id="description"></textarea>
+      <label for="description">Business Description</label>
+      <textarea id="description" placeholder="Describe your business in a few sentences..." required></textarea>
 
-      <label for="logo">Upload Logo:</label>
-      <input type="file" id="logo" accept="image/*" />
-
-      <label for="gallery">Gallery Images (up to 12):</label>
-      <input type="file" id="gallery" accept="image/*" multiple />
-
-      <label for="services">Services (one per line):</label>
-      <textarea id="services"></textarea>
-
-      <label for="testimonials">Testimonials (Name | Quote per line):</label>
-      <textarea id="testimonials"></textarea>
-
-      <label for="hours">Hours (one per line):</label>
-      <textarea id="hours"></textarea>
-
-      <label for="address">Address:</label>
-      <input type="text" id="address" />
-
-      <label for="email">Email:</label>
-      <input type="email" id="email" />
-
-      <label for="phone">Phone:</label>
-      <input type="text" id="phone" />
-
-      <label for="instagram">Instagram URL:</label>
-      <input type="url" id="instagram" />
-
-      <label for="ctaText">Call-to-Action Button Text:</label>
-      <input type="text" id="ctaText" value="Contact Us" />
-
-      <label for="brandColor">Brand Color:</label>
-      <input type="color" id="brandColor" value="#0ea5e9" />
-
-      <label for="theme">Theme:</label>
-      <select id="theme">
-        <option value="light" selected>Light</option>
-        <option value="dark">Dark</option>
+      <!-- Design (Pro+ unlocks these fully; Basic uses defaults) -->
+      <h3>Design</h3>
+      <label for="template">Template</label>
+      <select id="template" disabled>
+        <option value="modern" selected>Modern Startup</option>
+        <option value="local">Local Business</option>
+        <option value="portfolio">Personal Portfolio</option>
+        <option value="shop">Service / Shop</option>
       </select>
 
-      <label for="font">Font:</label>
-      <select id="font">
-        <option value="system-ui" selected>System Default</option>
-        <option value="Inter">Inter</option>
-        <option value="Poppins">Poppins</option>
-        <option value="Playfair Display">Playfair Display</option>
+      <label for="palette">Color Palette</label>
+      <select id="palette" disabled>
+        <option value="trust" selected>Trust Blue</option>
+        <option value="eco">Eco Green</option>
+        <option value="luxury">Luxury Gold</option>
+        <option value="creative">Creative Purple</option>
+        <option value="custom">Custom (use Brand Color)</option>
       </select>
 
-      <!-- NEW Background -->
-      <h3>Background</h3>
-      <label for="bgType">Background Type:</label>
-      <select id="bgType">
-        <option value="color" selected>Solid color</option>
-        <option value="gradient">Gradient</option>
-        <option value="image">Image</option>
-      </select>
+      <label for="brandColor">Brand Color (used when Custom is selected)</label>
+      <input id="brandColor" type="color" value="#0ea5e9" disabled/>
 
-      <label for="bgColor">Background Color:</label>
-      <input id="bgColor" type="color" value="#f8fafc" />
+      <!-- Assets -->
+      <label for="logo">Logo (optional)</label>
+      <input id="logo" type="file" accept="image/*"/>
 
-      <label for="bgGradient">Gradient (preset):</label>
-      <select id="bgGradient">
-        <option value="linear-gradient(135deg,#e0f2fe,#fce7f3)">Soft Sky</option>
-        <option value="linear-gradient(135deg,#fee2e2,#fef3c7)">Warm Sunset</option>
-        <option value="linear-gradient(135deg,#dcfce7,#e0e7ff)">Mint & Peri</option>
-        <option value="radial-gradient(circle at 20% 20%,#e9d5ff,#cffafe 60%,#ffffff)">Pastel Burst</option>
-      </select>
+      <label for="gallery">Gallery Images (limit depends on plan)</label>
+      <input id="gallery" type="file" accept="image/*" multiple/>
 
-      <label for="bgImage">Background Image (optional):</label>
-      <input id="bgImage" type="file" accept="image/*" />
+      <!-- Content sections (Pro+) -->
+      <h3>Content</h3>
+      <label for="services">Services (one per line)</label>
+      <textarea id="services" placeholder="Custom Drinks&#10;Catering&#10;Wholesale" disabled></textarea>
 
-      <!-- NEW Layout -->
-      <h3>Layout</h3>
-      <label for="layout">Choose Layout:</label>
-      <select id="layout">
-        <option value="classic" selected>Classic (stacked sections)</option>
-        <option value="sidebar">Sidebar</option>
-        <option value="splitHero">Split Hero</option>
-      </select>
+      <label for="testimonials">Testimonials (Name | Quote per line)</label>
+      <textarea id="testimonials" placeholder="Alex | Best coffee in town!&#10;Maya | Cozy vibes and great staff." disabled></textarea>
+
+      <label for="hours">Hours (one per line)</label>
+      <textarea id="hours" placeholder="Mon–Fri: 7am–6pm&#10;Sat–Sun: 8am–4pm" disabled></textarea>
+
+      <label for="address">Address</label>
+      <input id="address" placeholder="123 Main St, Springfield, USA" disabled/>
+
+      <!-- Conversion -->
+      <h3>Contact & Conversion</h3>
+      <label for="email">Contact Email (used for CTA + mailto)</label>
+      <input id="email" type="email" placeholder="hello@example.com"/>
+
+      <label for="phone">Phone (optional)</label>
+      <input id="phone" placeholder="(555) 123-4567"/>
+
+      <label for="instagram">Instagram URL (optional)</label>
+      <input id="instagram" type="url" placeholder="https://instagram.com/yourhandle"/>
+
+      <label for="ctaText">Call-to-Action Text</label>
+      <input id="ctaText" value="Contact Us"/>
+
+      <!-- Contact form via Formspree (Pro+) -->
+      <label for="formspree">Formspree Endpoint (optional)</label>
+      <input id="formspree" type="url" placeholder="https://formspree.io/f/yourFormId" disabled/>
+
+      <!-- Growth (Business) -->
+      <h3>Growth</h3>
+      <label for="seoTitle">SEO Title</label>
+      <input id="seoTitle" placeholder="Sunrise Coffee Co. — Fresh Roasts Daily" disabled/>
+
+      <label for="seoDescription">SEO Description</label>
+      <textarea id="seoDescription" placeholder="Small-batch roastery and café serving fresh coffee, pastries, and smiles." disabled></textarea>
+
+      <label for="gaId">Google Analytics (GA4) Measurement ID (optional)</label>
+      <input id="gaId" placeholder="G-XXXXXXXXXX" disabled/>
 
       <button type="submit">Generate Website</button>
     </form>
 
-    <button id="checkoutBtn">Buy Full Website ($20)</button>
-    <div id="previewArea"></div>
+    <button id="checkoutBtn">Buy Selected Plan</button>
+
+    <div id="previewArea" style="margin-top:18px;"></div>
   </div>
 
   <script src="builder.js"></script>
