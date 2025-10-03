@@ -1,90 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Payment Successful</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9fafc;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    h1 {
-      color: #222;
-      margin-bottom: 20px;
-    }
-
-    #status {
-      font-size: 1.2rem;
-      margin-bottom: 20px;
-    }
-
-    #downloadBtn {
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: bold;
-      color: white;
-      background: #2563eb;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      display: none;
-    }
-
-    #downloadBtn:hover {
-      background: #1e40af;
-    }
+    body{margin:0;background:#f5f7fb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .wrap{max-width:680px;width:100%;padding:32px}
+    h1{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+    .ok{color:#16a34a} .err{color:#e11d48}
+    #downloadBtn{display:none;background:#2563eb;color:#fff;border:0;padding:12px 18px;border-radius:10px;cursor:pointer;font-weight:600}
+    #downloadBtn:hover{background:#1e40af}
+    .muted{color:#475569}
   </style>
 </head>
 <body>
-  <h1>✅ Payment Successful</h1>
-  <p id="status">Checking payment...</p>
-  <button id="downloadBtn">Download Your Website</button>
+  <div class="wrap">
+    <h1><span class="ok">✅</span> Payment Successful</h1>
+    <p id="status" class="muted">Checking payment…</p>
+    <button id="downloadBtn">Download Your Website</button>
+  </div>
 
   <script>
-    window.addEventListener("DOMContentLoaded", async () => {
-      const params = new URLSearchParams(window.location.search);
+    (async function () {
+      const params = new URLSearchParams(location.search);
       const sessionId = params.get("session_id");
       const statusEl = document.getElementById("status");
-      const downloadBtn = document.getElementById("downloadBtn");
+      const btn = document.getElementById("downloadBtn");
 
       if (!sessionId) {
-        statusEl.textContent = "⚠️ No session ID found.";
+        statusEl.innerHTML = '<span class="err">❌</span> Missing session ID.';
         return;
       }
 
       try {
-        // Call your Netlify verify-session function
-        const resp = await fetch(`/.netlify/functions/verify-session?session_id=${sessionId}`);
+        const resp = await fetch(`/.netlify/functions/verify-session?session_id=${encodeURIComponent(sessionId)}`);
         const data = await resp.json();
 
-        if (data.ok) {
-          statusEl.textContent = "✅ Payment verified. You can now download your site.";
-          downloadBtn.style.display = "inline-block";
-
-          // Handle download
-          downloadBtn.addEventListener("click", () => {
-            const blob = new Blob([atob(data.htmlBase64)], { type: "text/html" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = data.filename || "site.html";
-            link.click();
-          });
-        } else {
-          statusEl.textContent = "❌ Payment not verified: " + (data.error || "Unknown error");
+        if (!resp.ok || !data.ok) {
+          statusEl.innerHTML = '<span class="err">❌</span> Payment not verified: ' + (data.error || resp.status);
+          return;
         }
+
+        // Payment verified — now read the website from localStorage
+        const siteB64 = localStorage.getItem("site_html_base64");
+        if (!siteB64) {
+          statusEl.innerHTML = '<span class="err">❌</span> We verified your payment, but your site content was not found on this device. Please go back and press "Generate Website" again, or contact support to receive the file by email.';
+          return;
+        }
+
+        statusEl.textContent = "Verified! Click the button to download your site.";
+        btn.style.display = "inline-block";
+
+        btn.addEventListener("click", () => {
+          const html = decodeURIComponent(escape(atob(siteB64)));
+          const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "site.html";
+          document.body.appendChild(a);
+          a.click();
+          URL.revokeObjectURL(url);
+          a.remove();
+        });
       } catch (err) {
         console.error(err);
-        statusEl.textContent = "⚠️ Error verifying payment.";
+        statusEl.innerHTML = '<span class="err">❌</span> Error verifying payment.';
       }
-    });
+    })();
   </script>
 </body>
 </html>
