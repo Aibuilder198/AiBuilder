@@ -30,11 +30,8 @@ function applyPlanLocks() {
   const plan = currentPlan();
   const proEnabled = plan === 'pro' || plan === 'biz';
   const bizEnabled = plan === 'biz';
-  // Pro
   toggleFields(['services', 'testimonials', 'hours', 'address', 'formspree'], proEnabled);
-  // Business
   toggleFields(['template', 'palette', 'brandColor', 'seoTitle', 'seoDescription', 'gaId'], bizEnabled);
-  // Badge
   const badge = byId('planBadge');
   if (badge) badge.textContent = plan === 'biz' ? 'Business' : (plan === 'pro' ? 'Pro' : 'Basic');
 }
@@ -73,7 +70,7 @@ function buildBackgroundCSS(bg) {
     const img = bg.image || "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
     return `
       body{
-        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
         background:
           linear-gradient(180deg, rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha})),
           url("${img}") no-repeat center/cover fixed;
@@ -82,7 +79,7 @@ function buildBackgroundCSS(bg) {
   if (bg.type === 'gradient') {
     return `
       body{
-        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
         background: radial-gradient(1200px 800px at 10% -10%, ${bg.color1}, transparent 60%),
                     radial-gradient(1000px 700px at 90% 110%, ${bg.color2}, transparent 60%),
                     #0b1221;
@@ -91,14 +88,14 @@ function buildBackgroundCSS(bg) {
   if (bg.type === 'solid') {
     return `
       body{
-        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
         background: ${bg.solid};
       }`;
   }
   // default
   return `
     body{
-      margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:
         linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
         url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop")
@@ -111,7 +108,7 @@ function buildSiteHTML(opts) {
     businessName, description, logoDataURL, galleryDataURLs = [],
     servicesText = "", testimonialsText = "", hoursText = "", address = "",
     ctaText, email, phone, instagram,
-    bg // {type, image, color1, color2, solid, overlay}
+    bg
   } = opts;
 
   const services = lines(servicesText);
@@ -212,12 +209,10 @@ async function collectFormAsHTML() {
   const instagram    = (byId("instagram")?.value || "").trim();
   const ctaText      = (byId("ctaText")?.value || "Contact Us").trim();
 
-  // Logo
   let logoDataURL = "";
   const logoInput = byId("logo");
   if (logoInput?.files?.[0]) logoDataURL = await fileToDataURL(logoInput.files[0]);
 
-  // Gallery
   const galleryDataURLs = [];
   const galleryInput = byId("gallery");
   if (galleryInput?.files?.length) {
@@ -227,7 +222,6 @@ async function collectFormAsHTML() {
     }
   }
 
-  // Background
   const bgType = byId("bgType")?.value || "default";
   let bgImage = "";
   if (bgType === "image-upload") {
@@ -246,7 +240,6 @@ async function collectFormAsHTML() {
     overlay: isNaN(bgOverlayPct) ? 0.55 : Math.max(0, Math.min(0.9, bgOverlayPct / 100))
   };
 
-  // Pro fields
   const servicesText     = proEnabled ? (byId("services")?.value || "") : "";
   const testimonialsText = proEnabled ? (byId("testimonials")?.value || "") : "";
   const hoursText        = proEnabled ? (byId("hours")?.value || "") : "";
@@ -327,7 +320,7 @@ byId("checkoutBtn").addEventListener("click", async () => {
   }
 });
 
-/* ===== Pricing Modal ===== */
+/* ===== Pricing Modal (robust) ===== */
 const pricingData = [
   {
     key: 'basic',
@@ -398,35 +391,42 @@ function renderPricing(selectedKey){
 function openPricingModal(){
   const selected = currentPlan(); // 'basic' | 'pro' | 'biz'
   renderPricing(selected);
+
+  document.body.classList.add('modal-open'); // lock scroll
   document.getElementById('pricingBackdrop').classList.add('show');
-  const modal = document.getElementById('pricingModal');
-  modal.setAttribute('aria-hidden','false');
-  // delegate clicks
-  document.getElementById('pricingGrid').onclick = (e)=>{
+  document.getElementById('pricingModal').setAttribute('aria-hidden','false');
+
+  const grid = document.getElementById('pricingGrid');
+  grid.onclick = (e)=>{
     const tierEl = e.target.closest('.tier');
     if(!tierEl) return;
     const key = tierEl.getAttribute('data-key');
     if(e.target.matches('[data-action="choose"]')){
-      // set the radio to match chosen tier
-      const valueForRadio = key === 'biz' ? 'business' : key;
-      const radio = document.querySelector(`input[name="plan"][value="${valueForRadio}"]`);
+      const radioValue = key === 'biz' ? 'business' : key;
+      const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
       if (radio) radio.checked = true;
-      // re-apply locks and close
       applyPlanLocks?.();
       closePricingModal();
-    }else if(e.target.matches('[data-action="close"]')){
+    } else if(e.target.matches('[data-action="close"]')){
       closePricingModal();
     }
   };
+
+  document.addEventListener('keydown', escCloser);
 }
 function closePricingModal(){
+  document.body.classList.remove('modal-open');
   document.getElementById('pricingBackdrop').classList.remove('show');
   document.getElementById('pricingModal').setAttribute('aria-hidden','true');
+  document.removeEventListener('keydown', escCloser);
 }
+function escCloser(e){ if (e.key === 'Escape') closePricingModal(); }
+
 document.getElementById('openPricing')?.addEventListener('click', openPricingModal);
 document.getElementById('pricingClose')?.addEventListener('click', closePricingModal);
 document.getElementById('pricingBackdrop')?.addEventListener('click', closePricingModal);
-// Optional: automatically open when switching radios:
-document.addEventListener('change', (e)=>{
-  if (e.target.matches('input[name="plan"]')) openPricingModal();
-});
+
+// If auto-open on radio change felt spammy, keep this commented:
+// document.addEventListener('change', (e)=>{
+//   if (e.target.matches('input[name="plan"]')) openPricingModal();
+// });
