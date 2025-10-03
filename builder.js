@@ -35,12 +35,6 @@ function applyPlanLocks() {
   const badge = byId('planBadge');
   if (badge) badge.textContent = plan === 'biz' ? 'Business' : (plan === 'pro' ? 'Pro' : 'Basic');
 }
-document.addEventListener('DOMContentLoaded', () => {
-  applyPlanLocks();
-  document.addEventListener('change', (e) => {
-    if (e.target.matches('input[name="plan"], #plan')) applyPlanLocks();
-  });
-});
 
 /* ====== BG controls visibility ====== */
 function show(el, yes){ if(!el) return; el.classList[yes ? 'remove' : 'add']('hide'); }
@@ -51,10 +45,6 @@ function updateBgUI() {
   show(byId('bgGradientRow'), type === 'gradient');
   show(byId('bgSolidRow'),    type === 'solid');
 }
-document.addEventListener('change', (e)=>{
-  if (e.target.id === 'bgType') updateBgUI();
-});
-document.addEventListener('DOMContentLoaded', updateBgUI);
 
 /* ====== Utils ====== */
 async function fileToDataURL(file) {
@@ -63,7 +53,7 @@ async function fileToDataURL(file) {
 }
 const lines = (t) => (t || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-/* ====== Build site HTML with customizable background ====== */
+/* ====== Build site (with custom background) ====== */
 function buildBackgroundCSS(bg) {
   const overlayAlpha = Math.max(0, Math.min(0.9, bg.overlay)); // 0..0.9
   if (bg.type === 'image-upload' || bg.type === 'image-url') {
@@ -197,7 +187,7 @@ function buildSiteHTML(opts) {
 </div></body></html>`;
 }
 
-/* ====== Gather fields (includes background) ====== */
+/* ====== Collect form -> HTML ====== */
 async function collectFormAsHTML() {
   const plan = currentPlan();
   const proEnabled = plan === "pro" || plan === "biz";
@@ -253,7 +243,7 @@ async function collectFormAsHTML() {
   });
 }
 
-/* ====== Local save (for success download) ====== */
+/* ====== Save built site so success page can offer download ====== */
 function saveSiteToLocalStorage(html) {
   try {
     const b64 = btoa(unescape(encodeURIComponent(html)));
@@ -263,7 +253,7 @@ function saveSiteToLocalStorage(html) {
   }
 }
 
-/* ====== Preview ====== */
+/* ====== Preview generation ====== */
 byId("builderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
@@ -320,7 +310,7 @@ byId("checkoutBtn").addEventListener("click", async () => {
   }
 });
 
-/* ===== Pricing Modal (robust) ===== */
+/* ===== Pricing Modal (robust & hidden by default) ===== */
 const pricingData = [
   {
     key: 'basic',
@@ -394,11 +384,15 @@ function renderPricing(selectedKey){
 
 function openPricingModal(){
   try {
-    const selected = currentPlan();         // 'basic' | 'pro' | 'biz'
-    renderPricing(selected);                // must populate cards before showing
+    const selected = currentPlan();
+    renderPricing(selected);
+
     document.body.classList.add('modal-open');
     document.getElementById('pricingBackdrop')?.classList.add('show');
-    document.getElementById('pricingModal')?.setAttribute('aria-hidden','false');
+
+    const modal = document.getElementById('pricingModal');
+    modal?.classList.add('show');               // show modal
+    modal?.setAttribute('aria-hidden','false');
 
     const grid = document.getElementById('pricingGrid');
     if (grid) {
@@ -406,6 +400,7 @@ function openPricingModal(){
         const tierEl = e.target.closest('.tier');
         if(!tierEl) return;
         const key = tierEl.getAttribute('data-key');
+
         if(e.target.matches('[data-action="choose"]')){
           const radioValue = key === 'biz' ? 'business' : key;
           const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
@@ -416,8 +411,6 @@ function openPricingModal(){
           closePricingModal();
         }
       };
-    } else {
-      console.error('[pricing] grid not available after open.');
     }
 
     document.addEventListener('keydown', escCloser);
@@ -428,7 +421,11 @@ function openPricingModal(){
 function closePricingModal(){
   document.body.classList.remove('modal-open');
   document.getElementById('pricingBackdrop')?.classList.remove('show');
-  document.getElementById('pricingModal')?.setAttribute('aria-hidden','true');
+
+  const modal = document.getElementById('pricingModal');
+  modal?.classList.remove('show');              // hide modal
+  modal?.setAttribute('aria-hidden','true');
+
   document.removeEventListener('keydown', escCloser);
 }
 function escCloser(e){ if (e.key === 'Escape') closePricingModal(); }
@@ -437,7 +434,14 @@ document.getElementById('openPricing')?.addEventListener('click', openPricingMod
 document.getElementById('pricingClose')?.addEventListener('click', closePricingModal);
 document.getElementById('pricingBackdrop')?.addEventListener('click', closePricingModal);
 
-// Keep auto-open disabled to avoid feeling spammy:
-// document.addEventListener('change', (e)=>{
-//   if (e.target.matches('input[name="plan"]')) openPricingModal();
-// });
+/* ====== On load ====== */
+document.addEventListener('DOMContentLoaded', () => {
+  applyPlanLocks();
+  updateBgUI();
+
+  // make absolutely sure modal starts hidden
+  document.getElementById('pricingBackdrop')?.classList.remove('show');
+  const modal = document.getElementById('pricingModal');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden','true');
+});
