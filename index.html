@@ -1,118 +1,178 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AI Website Builder</title>
-  <link rel="stylesheet" href="builder.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Create a Simple Business Website powered by AI</title>
+  <style>
+    :root {
+      --ink:#0f172a; --muted:#475569; --card:#ffffff; --bg:#f5f7fb; --brand:#2563eb;
+      --border:#e2e8f0; --shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
+    h1{margin:0 0 8px}
+    .muted{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px}
+    label{display:block;font-weight:600;margin:10px 0 6px}
+    input[type="text"],input[type="email"],input[type="url"],input[type="color"],textarea,select{
+      width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font:inherit
+    }
+    textarea{min-height:110px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .btnBar{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+    button{
+      background:var(--brand);color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700
+    }
+    button.secondary{background:#0ea5e9}
+    #previewArea{margin-top:18px}
+    .disabled{opacity:.55}
+    .plan{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:700}
+    .hint{font-size:13px;color:var(--muted)}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Build a Beautiful Website in Minutes</h1>
+  <div class="wrap">
+    <h1>Create a Simple Business Website powered by AI</h1>
+    <p class="muted">Preview is free. Download unlocks after payment.</p>
 
-    <!-- Pricing / Plans -->
-    <form id="planForm" class="card" style="margin-bottom:16px;">
-      <h3>Choose your plan</h3>
-      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
-        <input type="radio" name="plan" value="basic" checked />
-        <strong>Basic — $20 one-time</strong> · Single page, logo + 3 gallery images, About & Contact
-      </label>
-      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
-        <input type="radio" name="plan" value="pro" />
-        <strong>Pro — $29/month</strong> · Everything in Basic + Services, Testimonials, 12 gallery images, SEO tags, Maps, Contact Form
-      </label>
-      <label style="display:flex;gap:10px;align-items:center;margin:8px 0;">
-        <input type="radio" name="plan" value="business" />
-        <strong>Business — $79/month</strong> · Everything in Pro + Templates, Color Palettes, Analytics, Social embeds (best for growth)
-      </label>
-    </form>
+    <!-- PLAN SELECTOR -->
+    <div class="card">
+      <h2>Choose a Plan <span id="planBadge" class="pill">Basic</span></h2>
+      <div class="plan">
+        <form name="planForm">
+          <label><input type="radio" name="plan" value="basic" checked> Basic ($20 one-time)</label>
+          &nbsp;&nbsp;
+          <label><input type="radio" name="plan" value="pro"> Pro ($29/mo)</label>
+          &nbsp;&nbsp;
+          <label><input type="radio" name="plan" value="business"> Business ($79/mo)</label>
+        </form>
+      </div>
+      <p class="hint" style="margin-top:6px">
+        <strong>Basic:</strong> single page (+logo, up to a few images). 
+        <strong>Pro:</strong> adds Services, Testimonials, Hours/Location, Contact form. 
+        <strong>Business:</strong> adds Themes, Palette, Custom Brand Color, SEO, Analytics.
+      </p>
+    </div>
 
-    <form id="builderForm">
-      <!-- Basic -->
-      <label for="businessName">Business Name</label>
-      <input id="businessName" required placeholder="Sunrise Coffee Co."/>
+    <div class="grid">
+      <!-- LEFT: FORM -->
+      <div class="card">
+        <form id="builderForm">
+          <h2>Content</h2>
+          <label for="businessName">Business Name</label>
+          <input id="businessName" type="text" placeholder="e.g., Rizo Hats" required />
 
-      <label for="description">Business Description</label>
-      <textarea id="description" placeholder="Describe your business in a few sentences..." required></textarea>
+          <label for="description">Business Description</label>
+          <textarea id="description" placeholder="What do you do?"></textarea>
 
-      <!-- Design (Pro+ unlocks these fully; Basic uses defaults) -->
-      <h3>Design</h3>
-      <label for="template">Template</label>
-      <select id="template" disabled>
-        <option value="modern" selected>Modern Startup</option>
-        <option value="local">Local Business</option>
-        <option value="portfolio">Personal Portfolio</option>
-        <option value="shop">Service / Shop</option>
-      </select>
+          <div class="row">
+            <div>
+              <label for="logo">Upload Logo</label>
+              <input id="logo" type="file" accept="image/*" />
+            </div>
+            <div>
+              <label for="gallery">Gallery Images</label>
+              <input id="gallery" type="file" accept="image/*" multiple />
+              <div class="hint">Basic preview: up to ~6 images for speed.</div>
+            </div>
+          </div>
 
-      <label for="palette">Color Palette</label>
-      <select id="palette" disabled>
-        <option value="trust" selected>Trust Blue</option>
-        <option value="eco">Eco Green</option>
-        <option value="luxury">Luxury Gold</option>
-        <option value="creative">Creative Purple</option>
-        <option value="custom">Custom (use Brand Color)</option>
-      </select>
+          <div class="row">
+            <div>
+              <label for="email">Contact Email</label>
+              <input id="email" type="email" placeholder="hello@example.com" />
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" type="text" placeholder="(555) 123-4567" />
+            </div>
+          </div>
 
-      <label for="brandColor">Brand Color (used when Custom is selected)</label>
-      <input id="brandColor" type="color" value="#0ea5e9" disabled/>
+          <div class="row">
+            <div>
+              <label for="instagram">Instagram URL</label>
+              <input id="instagram" type="url" placeholder="https://instagram.com/yourbrand" />
+            </div>
+            <div>
+              <label for="ctaText">CTA Button Text</label>
+              <input id="ctaText" type="text" placeholder="Contact Us" />
+            </div>
+          </div>
 
-      <!-- Assets -->
-      <label for="logo">Logo (optional)</label>
-      <input id="logo" type="file" accept="image/*"/>
+          <h2>Pro Features</h2>
+          <label for="services">Services (one per line)</label>
+          <textarea id="services" class="disabled" disabled placeholder="Hats&#10;Clothes"></textarea>
 
-      <label for="gallery">Gallery Images (limit depends on plan)</label>
-      <input id="gallery" type="file" accept="image/*" multiple/>
+          <label for="testimonials">Testimonials (Name | Quote per line)</label>
+          <textarea id="testimonials" class="disabled" disabled placeholder="Aly | Best hats in town!"></textarea>
 
-      <!-- Content sections (Pro+) -->
-      <h3>Content</h3>
-      <label for="services">Services (one per line)</label>
-      <textarea id="services" placeholder="Custom Drinks&#10;Catering&#10;Wholesale" disabled></textarea>
+          <label for="hours">Hours (one per line)</label>
+          <textarea id="hours" class="disabled" disabled placeholder="Mon-Fri 9am-6pm&#10;Sat 10am-4pm"></textarea>
 
-      <label for="testimonials">Testimonials (Name | Quote per line)</label>
-      <textarea id="testimonials" placeholder="Alex | Best coffee in town!&#10;Maya | Cozy vibes and great staff." disabled></textarea>
+          <label for="address">Address</label>
+          <input id="address" class="disabled" disabled type="text" placeholder="123 Main St, City" />
 
-      <label for="hours">Hours (one per line)</label>
-      <textarea id="hours" placeholder="Mon–Fri: 7am–6pm&#10;Sat–Sun: 8am–4pm" disabled></textarea>
+          <label for="formspree">Formspree Endpoint (optional)</label>
+          <input id="formspree" class="disabled" disabled type="url" placeholder="https://formspree.io/f/xxxxxx" />
 
-      <label for="address">Address</label>
-      <input id="address" placeholder="123 Main St, Springfield, USA" disabled/>
+          <h2>Business Features</h2>
+          <div class="row3">
+            <div>
+              <label for="template">Template</label>
+              <select id="template" class="disabled" disabled>
+                <option value="modern" selected>Modern</option>
+                <option value="clean">Clean</option>
+              </select>
+            </div>
+            <div>
+              <label for="palette">Palette</label>
+              <select id="palette" class="disabled" disabled>
+                <option value="trust" selected>Trust (blue)</option>
+                <option value="eco">Eco (green)</option>
+                <option value="luxury">Luxury (amber)</option>
+                <option value="creative">Creative (purple)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div>
+              <label for="brandColor">Brand Color</label>
+              <input id="brandColor" class="disabled" disabled type="color" value="#2563eb" />
+            </div>
+          </div>
 
-      <!-- Conversion -->
-      <h3>Contact & Conversion</h3>
-      <label for="email">Contact Email (used for CTA + mailto)</label>
-      <input id="email" type="email" placeholder="hello@example.com"/>
+          <div class="row">
+            <div>
+              <label for="seoTitle">SEO Title</label>
+              <input id="seoTitle" class="disabled" disabled type="text" placeholder="Rizo Hats — Quality Headwear" />
+            </div>
+            <div>
+              <label for="seoDescription">SEO Description</label>
+              <input id="seoDescription" class="disabled" disabled type="text" placeholder="Premium hats crafted with care." />
+            </div>
+          </div>
 
-      <label for="phone">Phone (optional)</label>
-      <input id="phone" placeholder="(555) 123-4567"/>
+          <label for="gaId">Google Analytics ID (G-XXXXXXX)</label>
+          <input id="gaId" class="disabled" disabled type="text" placeholder="G-XXXXXXXX" />
 
-      <label for="instagram">Instagram URL (optional)</label>
-      <input id="instagram" type="url" placeholder="https://instagram.com/yourhandle"/>
+          <div class="btnBar">
+            <button type="submit">Generate Website (Preview)</button>
+            <button type="button" id="checkoutBtn" class="secondary">Buy Selected Plan</button>
+          </div>
+        </form>
+      </div>
 
-      <label for="ctaText">Call-to-Action Text</label>
-      <input id="ctaText" value="Contact Us"/>
-
-      <!-- Contact form via Formspree (Pro+) -->
-      <label for="formspree">Formspree Endpoint (optional)</label>
-      <input id="formspree" type="url" placeholder="https://formspree.io/f/yourFormId" disabled/>
-
-      <!-- Growth (Business) -->
-      <h3>Growth</h3>
-      <label for="seoTitle">SEO Title</label>
-      <input id="seoTitle" placeholder="Sunrise Coffee Co. — Fresh Roasts Daily" disabled/>
-
-      <label for="seoDescription">SEO Description</label>
-      <textarea id="seoDescription" placeholder="Small-batch roastery and café serving fresh coffee, pastries, and smiles." disabled></textarea>
-
-      <label for="gaId">Google Analytics (GA4) Measurement ID (optional)</label>
-      <input id="gaId" placeholder="G-XXXXXXXXXX" disabled/>
-
-      <button type="submit">Generate Website</button>
-    </form>
-
-    <button id="checkoutBtn">Buy Selected Plan</button>
-
-    <div id="previewArea" style="margin-top:18px;"></div>
+      <!-- RIGHT: PREVIEW -->
+      <div class="card">
+        <h2>Live Preview</h2>
+        <div id="previewArea" class="muted">Fill the form and press “Generate Website (Preview)”.</div>
+      </div>
+    </div>
   </div>
 
   <script src="builder.js"></script>
