@@ -1,61 +1,90 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment Successful</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:40px;line-height:1.5;color:#0f172a}
-    .btn{display:inline-block;background:#2563eb;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none}
-    .muted{color:#475569}
-    #msg{margin:12px 0}
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #222;
+      margin-bottom: 20px;
+    }
+
+    #status {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+    }
+
+    #downloadBtn {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background: #2563eb;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
+
+    #downloadBtn:hover {
+      background: #1e40af;
+    }
   </style>
 </head>
 <body>
   <h1>✅ Payment Successful</h1>
-  <p id="msg" class="muted">Verifying your payment and preparing your download…</p>
-  <button id="downloadBtn" class="btn" disabled>Download Your Website</button>
+  <p id="status">Checking payment...</p>
+  <button id="downloadBtn">Download Your Website</button>
 
   <script>
-    (async function(){
-      const params = new URLSearchParams(location.search);
+    window.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(window.location.search);
       const sessionId = params.get("session_id");
-      const msg = document.getElementById("msg");
-      const btn = document.getElementById("downloadBtn");
+      const statusEl = document.getElementById("status");
+      const downloadBtn = document.getElementById("downloadBtn");
 
-      if(!sessionId){
-        msg.textContent = "Missing session_id — please return to the site.";
+      if (!sessionId) {
+        statusEl.textContent = "⚠️ No session ID found.";
         return;
       }
 
-      try{
-        const res = await fetch(`/.netlify/functions/verify-session?session_id=${encodeURIComponent(sessionId)}`);
-        const data = await res.json();
-        if(!res.ok || !data.ok){
-          msg.textContent = (data && data.error) ? data.error : "Could not verify payment.";
-          return;
+      try {
+        // Call your Netlify verify-session function
+        const resp = await fetch(`/.netlify/functions/verify-session?session_id=${sessionId}`);
+        const data = await resp.json();
+
+        if (data.ok) {
+          statusEl.textContent = "✅ Payment verified. You can now download your site.";
+          downloadBtn.style.display = "inline-block";
+
+          // Handle download
+          downloadBtn.addEventListener("click", () => {
+            const blob = new Blob([atob(data.htmlBase64)], { type: "text/html" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = data.filename || "site.html";
+            link.click();
+          });
+        } else {
+          statusEl.textContent = "❌ Payment not verified: " + (data.error || "Unknown error");
         }
-
-        msg.textContent = "Verified! Click the button to download your site.";
-        btn.disabled = false;
-
-        btn.addEventListener("click", () => {
-          const html = atob(data.htmlBase64);
-          const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = data.filename || "site.html";
-          document.body.appendChild(a);
-          a.click();
-          URL.revokeObjectURL(url);
-          a.remove();
-        });
-      }catch(err){
+      } catch (err) {
         console.error(err);
-        msg.textContent = "There was an error unlocking your download.";
+        statusEl.textContent = "⚠️ Error verifying payment.";
       }
-    })();
+    });
   </script>
 </body>
 </html>
