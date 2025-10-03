@@ -46,17 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ====== BG controls visibility ====== */
-function show(el, yes){ el.classList[yes ? 'remove' : 'add']('hide'); }
+function show(el, yes){ if(!el) return; el.classList[yes ? 'remove' : 'add']('hide'); }
 function updateBgUI() {
   const type = byId('bgType')?.value || 'default';
-  const upRow = byId('bgUploadRow');
-  const urlRow = byId('bgUrlRow');
-  const gradRow = byId('bgGradientRow');
-  const solidRow = byId('bgSolidRow');
-  show(upRow, type === 'image-upload');
-  show(urlRow, type === 'image-url');
-  show(gradRow, type === 'gradient');
-  show(solidRow, type === 'solid');
+  show(byId('bgUploadRow'),   type === 'image-upload');
+  show(byId('bgUrlRow'),      type === 'image-url');
+  show(byId('bgGradientRow'), type === 'gradient');
+  show(byId('bgSolidRow'),    type === 'solid');
 }
 document.addEventListener('change', (e)=>{
   if (e.target.id === 'bgType') updateBgUI();
@@ -329,4 +325,108 @@ byId("checkoutBtn").addEventListener("click", async () => {
     console.error("Checkout error:", err);
     alert("Checkout failed. See console for details.");
   }
+});
+
+/* ===== Pricing Modal ===== */
+const pricingData = [
+  {
+    key: 'basic',
+    name: 'Basic',
+    price: '$20',
+    pill: 'one-time',
+    bullets: [
+      { ok:true,  text:'Downloadable website after payment' },
+      { ok:true,  text:'Logo + up to a few gallery images' },
+      { ok:true,  text:'Clean, modern single-page layout' },
+      { ok:false, text:'Services, Testimonials, Hours/Location' },
+      { ok:false, text:'Custom themes / palette / brand color' },
+      { ok:false, text:'SEO fields & Analytics' },
+    ]
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    price: '$29.00',
+    pill: 'per month',
+    bullets: [
+      { ok:true,  text:'Everything in Basic' },
+      { ok:true,  text:'Services, Testimonials, Hours/Location' },
+      { ok:true,  text:'Contact form ready (Formspree)' },
+      { ok:true,  text:'Priority preview speed' },
+      { ok:false, text:'Custom themes / palette / brand color' },
+      { ok:false, text:'SEO fields & Analytics' },
+    ]
+  },
+  {
+    key: 'biz',
+    name: 'Business',
+    price: '$79.00',
+    pill: 'per month',
+    bullets: [
+      { ok:true,  text:'Everything in Pro' },
+      { ok:true,  text:'Themes, palette, custom brand color' },
+      { ok:true,  text:'SEO title & description' },
+      { ok:true,  text:'Google Analytics slot' },
+      { ok:true,  text:'Best for growth & A/B iteration' },
+    ]
+  },
+];
+
+function renderPricing(selectedKey){
+  const grid = document.getElementById('pricingGrid');
+  grid.innerHTML = pricingData.map(tier => {
+    const active = tier.key === selectedKey ? 'active' : '';
+    const lis = tier.bullets.map(b => {
+      const icon = b.ok ? '<span class="tier-ok">✔</span>' : '<span class="tier-no">✖</span>';
+      return `<li>${icon}<span>${b.text}</span></li>`;
+    }).join('');
+    return `
+      <div class="tier ${active}" data-key="${tier.key}">
+        <div class="tier-head">
+          <div class="tier-name">${tier.name} <span class="tier-pill">${tier.pill}</span></div>
+          <div class="tier-price">${tier.price}</div>
+        </div>
+        <ul class="tier-list">${lis}</ul>
+        <div class="tier-cta">
+          <button type="button" data-action="choose">Choose ${tier.name}</button>
+          <button type="button" class="ghost" data-action="close">Close</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openPricingModal(){
+  const selected = currentPlan(); // 'basic' | 'pro' | 'biz'
+  renderPricing(selected);
+  document.getElementById('pricingBackdrop').classList.add('show');
+  const modal = document.getElementById('pricingModal');
+  modal.setAttribute('aria-hidden','false');
+  // delegate clicks
+  document.getElementById('pricingGrid').onclick = (e)=>{
+    const tierEl = e.target.closest('.tier');
+    if(!tierEl) return;
+    const key = tierEl.getAttribute('data-key');
+    if(e.target.matches('[data-action="choose"]')){
+      // set the radio to match chosen tier
+      const valueForRadio = key === 'biz' ? 'business' : key;
+      const radio = document.querySelector(`input[name="plan"][value="${valueForRadio}"]`);
+      if (radio) radio.checked = true;
+      // re-apply locks and close
+      applyPlanLocks?.();
+      closePricingModal();
+    }else if(e.target.matches('[data-action="close"]')){
+      closePricingModal();
+    }
+  };
+}
+function closePricingModal(){
+  document.getElementById('pricingBackdrop').classList.remove('show');
+  document.getElementById('pricingModal').setAttribute('aria-hidden','true');
+}
+document.getElementById('openPricing')?.addEventListener('click', openPricingModal);
+document.getElementById('pricingClose')?.addEventListener('click', closePricingModal);
+document.getElementById('pricingBackdrop')?.addEventListener('click', closePricingModal);
+// Optional: automatically open when switching radios:
+document.addEventListener('change', (e)=>{
+  if (e.target.matches('input[name="plan"]')) openPricingModal();
 });
