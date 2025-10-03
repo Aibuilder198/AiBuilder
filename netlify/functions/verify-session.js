@@ -1,6 +1,4 @@
 // netlify/functions/verify-session.js
-// Verify Stripe Checkout session (no Stripe SDK) and return generated site HTML
-
 "use strict";
 
 function reconstructHTML(metadata = {}) {
@@ -18,10 +16,7 @@ function reconstructHTML(metadata = {}) {
 
 exports.handler = async (event) => {
   const sessionId = event.queryStringParameters?.session_id || "";
-
-  if (!sessionId) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Missing session_id" }) };
-  }
+  if (!sessionId) return { statusCode: 400, body: JSON.stringify({ error: "Missing session_id" }) };
 
   try {
     const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
@@ -32,15 +27,10 @@ exports.handler = async (event) => {
       headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
     });
     const session = await resp.json();
+    if (!resp.ok) return { statusCode: resp.status, body: JSON.stringify(session) };
 
-    if (!resp.ok) {
-      console.error("Stripe session fetch error:", session);
-      return { statusCode: resp.status, body: JSON.stringify(session) };
-    }
-
-    // Gate: require paid or complete
     const isPaid = session.payment_status === "paid";
-    const isComplete = session.status === "complete"; // covers subscriptions
+    const isComplete = session.status === "complete";
     if (!isPaid && !isComplete) {
       return { statusCode: 402, body: JSON.stringify({ error: "Payment not completed" }) };
     }
