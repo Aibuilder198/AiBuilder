@@ -2,6 +2,7 @@
    - BASIC: one-time $20 (mode: payment)
    - PRO:   $29/month     (mode: subscription)
    - BIZ:   $79/month     (mode: subscription)
+   Replace with your real IDs (you provided these already)
 */
 const STRIPE_PRICES = {
   basic: { price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", mode: "payment" },     // $20 one-time
@@ -221,6 +222,7 @@ ${fontHref ? `<link href="${fontHref}" rel="stylesheet">` : ""}
   footer{ text-align:center; color:#e5e7eb; padding:24px 12px; text-shadow:0 2px 10px rgba(0,0,0,.4); }
   .mapWrap{ margin-top:10px; }
 </style>
+${analytics}
 </head>
 <body>
   <div class="veil">
@@ -267,7 +269,7 @@ async function collectFormAsHTML() {
   const template   = bizEnabled ? (byId("template")?.value || "modern") : "modern";
   const paletteKey = bizEnabled ? (byId("palette")?.value || "trust")  : "trust";
   const brandColor = bizEnabled ? (byId("brandColor")?.value || "#0ea5e9") : "#2563eb";
-  const font       = "system-ui"; // keep simple; add UI later if needed
+  const font       = "system-ui"; // keep simple
 
   // Assets
   let logoDataURL = "";
@@ -321,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.forms.planForm?.addEventListener("change", applyPlanLocks);
 });
 
-/* ========= Generate Website (preview + download) ========= */
+/* ========= Generate Website (preview only; no download link) ========= */
 byId("builderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
@@ -331,10 +333,11 @@ byId("builderForm").addEventListener("submit", async (e) => {
 
     const preview = byId("previewArea");
     preview.innerHTML = `
-      <p><strong>Preview:</strong></p>
+      <p><strong>Preview (not downloadable):</strong></p>
       <iframe src="${url}" width="100%" height="620" style="border:1px solid #e2e8f0;border-radius:12px;"></iframe>
-      <br/>
-      <a href="${url}" download="site.html" class="cta">Download Your Site</a>
+      <p style="margin-top:8px;color:#475569">
+        Want the file? Choose a plan and complete checkout — you’ll unlock the download on the success page.
+      </p>
     `;
   } catch (err) {
     console.error(err);
@@ -355,13 +358,13 @@ byId("checkoutBtn").addEventListener("click", async () => {
       body: JSON.stringify({
         items: [{ price: cfg.price, quantity: 1 }],
         mode: cfg.mode, // 'payment' or 'subscription'
-        success_url: `${window.location.origin}/success`,
-        cancel_url: `${window.location.origin}/cancel`,
+        // success/cancel URLs set server-side to include ?session_id=...
         sitePayload: {
           businessName: byId("businessName")?.value || "",
           description: byId("description")?.value || "",
           htmlBase64: btoa(unescape(encodeURIComponent(html)))
-        }
+        },
+        planName: plan
       })
     });
 
@@ -371,7 +374,7 @@ byId("checkoutBtn").addEventListener("click", async () => {
     }
     const data = await res.json();
     if (data?.url) {
-      window.location.href = data.url;
+      window.location.href = data.url; // Redirect to Stripe Checkout
     } else {
       alert("Checkout failed (no URL).");
     }
