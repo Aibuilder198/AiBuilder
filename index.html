@@ -6,37 +6,100 @@
   <title>Create a Simple Business Website powered by AI</title>
   <style>
     :root {
-      --ink:#0f172a; --muted:#475569; --card:#ffffff; --bg:#f5f7fb; --brand:#2563eb;
-      --border:#e2e8f0; --shadow:0 10px 30px rgba(0,0,0,.08);
+      --ink:#0f172a; --muted:#475569; --card:#ffffff; --bg:#0b1221; --brand:#2563eb;
+      --border:rgba(255,255,255,.18); --shadow:0 20px 60px rgba(2,8,23,.25);
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
-    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
-    h1{margin:0 0 8px}
-    .muted{color:var(--muted)}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:18px}
-    label{display:block;font-weight:600;margin:10px 0 6px}
-    input[type="text"],input[type="email"],input[type="url"],input[type="color"],textarea,select{
-      width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font:inherit
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#e8eefc;
+      background: var(--bg);
+      overflow-x:hidden;
     }
+
+    /* ===== BACKGROUND LAYERS ===== */
+    .bg{
+      position:fixed; inset:0; z-index:-3;
+      background:
+        radial-gradient(1200px 800px at 10% -10%, rgba(37,99,235,.35), transparent 60%),
+        radial-gradient(1000px 700px at 90% 110%, rgba(244,63,94,.25), transparent 60%);
+    }
+    /* Photo layer with dark gradient for contrast */
+    .bg::before{
+      content:""; position:absolute; inset:0; z-index:-2;
+      background:
+        linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
+        url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop");
+      background-size: cover; background-position: center;
+      filter:saturate(1.05) contrast(1.05);
+    }
+    /* Animated blobs for a premium feel */
+    .blob, .blob2{
+      position:fixed; width:55vmax; height:55vmax; border-radius:50%;
+      filter: blur(70px); opacity:.45; z-index:-1; pointer-events:none;
+      animation: float 22s ease-in-out infinite alternate;
+      mix-blend-mode: screen;
+    }
+    .blob{ background: radial-gradient(circle at 30% 30%, #60a5fa, transparent 55%); top:-10vmax; left:-15vmax }
+    .blob2{ background: radial-gradient(circle at 70% 70%, #f472b6, transparent 55%); bottom:-12vmax; right:-18vmax; animation-duration:26s }
+    @keyframes float {
+      0%   { transform: translate3d(0,0,0) scale(1); }
+      100% { transform: translate3d(2vmax, -2vmax, 0) scale(1.05); }
+    }
+    /* Grain for texture (very subtle) */
+    .grain{
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 0 0 .05 .1 .08 .06 .05 0 0 0 0 0 0 0 0 0 0 0'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      background-size: 180px 180px; opacity:.18;
+    }
+
+    /* ===== PAGE STRUCTURE ===== */
+    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
+    h1{margin:0 0 8px; text-shadow:0 6px 24px rgba(0,0,0,.35)}
+    .muted{color:#c7d2fe}
+
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{
+      background: rgba(255,255,255,.08);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: var(--shadow);
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+
+    label{display:block;font-weight:700;margin:10px 0 6px}
+    input[type="text"],input[type="email"],input[type="url"],input[type="color"],textarea,select{
+      width:100%;padding:12px;border:1px solid rgba(255,255,255,.18);
+      border-radius:12px;font:inherit;background:rgba(255,255,255,.06); color:#e8eefc;
+      outline:none;
+    }
+    input::placeholder, textarea::placeholder{ color:#a8b3cf }
     textarea{min-height:110px;resize:vertical}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     .btnBar{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
     button{
-      background:var(--brand);color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700
+      background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:800;
+      box-shadow:0 10px 30px rgba(37,99,235,.35);
     }
-    button.secondary{background:#0ea5e9}
+    button:hover{ filter:brightness(1.05) }
+    button.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2)}
     #previewArea{margin-top:18px}
     .disabled{opacity:.55}
     .plan{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-weight:700}
-    .hint{font-size:13px;color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(99,102,241,.25);color:#fff;font-weight:800;border:1px solid rgba(255,255,255,.25)}
+    .hint{font-size:13px;color:#bac6ff}
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
+  <!-- Background layers -->
+  <div class="bg"></div>
+  <div class="blob"></div>
+  <div class="blob2"></div>
+  <div class="grain"></div>
+
   <div class="wrap">
     <h1>Create a Simple Business Website powered by AI</h1>
     <p class="muted">Preview is free. Download unlocks after payment.</p>
