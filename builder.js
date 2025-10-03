@@ -1,19 +1,66 @@
-/* ========= Config: Stripe Price IDs ========= */
+/* ========= Stripe Price IDs ========= */
 const STRIPE_PRICES = {
   basic: { price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", mode: "payment" },     // $20 one-time
-  pro:   { price: "price_1SDbHKAmJkffDNdtYP9sVw1T", mode: "subscription" }, // $29/month
-  biz:   { price: "price_1SDbI1AmJkffDNdtjiqSI7qF", mode: "subscription" }  // $79/month
+  pro:   { price: "price_1SDbHKAmJkffDNdtYP9sVw1T", mode: "subscription" }, // $29/mo
+  biz:   { price: "price_1SDbI1AmJkffDNdtjiqSI7qF", mode: "subscription" }  // $79/mo
 };
 
 const byId = (id) => document.getElementById(id);
 
+/* ====== Plan detection & locks (robust) ====== */
+function currentPlan() {
+  // Works for either radios (name="plan") or a <select id="plan">
+  const chosen =
+    document.querySelector('input[name="plan"]:checked')?.value ||
+    document.getElementById('plan')?.value ||
+    'basic';
+
+  const v = String(chosen).toLowerCase();
+  if (['business', 'biz', 'business-monthly', 'enterprise'].includes(v)) return 'biz';
+  if (['pro', 'professional'].includes(v)) return 'pro';
+  return 'basic';
+}
+
+function toggleFields(ids, enabled) {
+  ids.forEach((id) => {
+    const el = byId(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    el.classList.toggle('disabled', !enabled);
+  });
+}
+
+function applyPlanLocks() {
+  const plan = currentPlan();
+  const proEnabled = plan === 'pro' || plan === 'biz';
+  const bizEnabled = plan === 'biz';
+
+  // Pro features
+  toggleFields(['services', 'testimonials', 'hours', 'address', 'formspree'], proEnabled);
+
+  // Business features
+  toggleFields(['template', 'palette', 'brandColor', 'seoTitle', 'seoDescription', 'gaId'], bizEnabled);
+
+  // Badge
+  const badge = byId('planBadge');
+  if (badge) badge.textContent = plan === 'biz' ? 'Business' : (plan === 'pro' ? 'Pro' : 'Basic');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  applyPlanLocks();
+  document.addEventListener('change', (e) => {
+    if (e.target.matches('input[name="plan"], #plan')) applyPlanLocks();
+  });
+});
+
+/* ====== Utils ====== */
 async function fileToDataURL(file) {
   const r = new FileReader();
   return new Promise((res, rej) => { r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
 const lines = (t) => (t || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-/* ====== minimal palette/font just like before ====== */
+/* ====== Site generator (same aesthetic as before) ====== */
 function buildSiteHTML(opts) {
   const {
     businessName, description, logoDataURL, galleryDataURLs = [],
@@ -109,8 +156,11 @@ function buildSiteHTML(opts) {
 </div></body></html>`;
 }
 
-/* ======= form collection (trimmed) ======= */
+/* ====== Gather fields (honor plan locks) ====== */
 async function collectFormAsHTML() {
+  const plan = currentPlan();
+  const proEnabled = plan === "pro" || plan === "biz";
+
   const businessName = (byId("businessName")?.value || "").trim();
   const description  = (byId("description")?.value || "").trim();
   const email        = (byId("email")?.value || "").trim();
@@ -125,16 +175,16 @@ async function collectFormAsHTML() {
   const galleryDataURLs = [];
   const galleryInput = byId("gallery");
   if (galleryInput?.files?.length) {
-    const files = Array.from(galleryInput.files).slice(0, 6); // keep preview snappy
+    const files = Array.from(galleryInput.files).slice(0, 6); // keep preview responsive
     for (const f of files) {
       if (f.size <= 1.5 * 1024 * 1024) galleryDataURLs.push(await fileToDataURL(f));
     }
   }
 
-  const servicesText     = byId("services")?.value || "";
-  const testimonialsText = byId("testimonials")?.value || "";
-  const hoursText        = byId("hours")?.value || "";
-  const address          = byId("address")?.value || "";
+  const servicesText     = proEnabled ? (byId("services")?.value || "") : "";
+  const testimonialsText = proEnabled ? (byId("testimonials")?.value || "") : "";
+  const hoursText        = proEnabled ? (byId("hours")?.value || "") : "";
+  const address          = proEnabled ? (byId("address")?.value || "") : "";
 
   return buildSiteHTML({
     businessName, description, logoDataURL, galleryDataURLs,
@@ -143,7 +193,7 @@ async function collectFormAsHTML() {
   });
 }
 
-/* ======= Save to localStorage helper ======= */
+/* ====== Local save (for success download) ====== */
 function saveSiteToLocalStorage(html) {
   try {
     const b64 = btoa(unescape(encodeURIComponent(html)));
@@ -153,7 +203,7 @@ function saveSiteToLocalStorage(html) {
   }
 }
 
-/* ======= Preview ======= */
+/* ====== Preview ====== */
 byId("builderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
@@ -162,6 +212,7 @@ byId("builderForm").addEventListener("submit", async (e) => {
 
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
+
     const preview = byId("previewArea");
     preview.innerHTML = `
       <p><strong>Preview (not downloadable):</strong></p>
@@ -171,27 +222,21 @@ byId("builderForm").addEventListener("submit", async (e) => {
       </p>`;
   } catch (err) {
     console.error(err);
-    alert("Could not generate site.");
+    alert("Could not generate site. See console for details.");
   }
 });
 
-/* ======= Plan picker ======= */
-function getSelectedPlan() {
-  const form = document.forms.planForm;
-  const val = form?.plan?.value || "basic";
-  if (val === "pro") return "pro";
-  if (val === "business") return "biz";
-  return "basic";
+/* ====== Checkout ====== */
+function selectedPlanConfig() {
+  const plan = currentPlan();
+  return plan === "pro" ? STRIPE_PRICES.pro : (plan === "biz" ? STRIPE_PRICES.biz : STRIPE_PRICES.basic);
 }
 
-/* ======= Checkout ======= */
 byId("checkoutBtn").addEventListener("click", async () => {
-  const plan = getSelectedPlan();
-  const cfg = (plan === "pro") ? STRIPE_PRICES.pro : (plan === "biz") ? STRIPE_PRICES.biz : STRIPE_PRICES.basic;
-
+  const cfg = selectedPlanConfig();
   try {
     const html = await collectFormAsHTML();
-    saveSiteToLocalStorage(html); // ensure it’s saved before redirect
+    saveSiteToLocalStorage(html); // ensure saved before redirect
 
     const res = await fetch("/.netlify/functions/create-checkout", {
       method: "POST",
@@ -199,17 +244,16 @@ byId("checkoutBtn").addEventListener("click", async () => {
       body: JSON.stringify({
         items: [{ price: cfg.price, quantity: 1 }],
         mode: cfg.mode,
-        // We no longer send the site content to Stripe at all
         sitePayload: {
           businessName: byId("businessName")?.value || "",
           description: byId("description")?.value || ""
         },
-        planName: plan
+        planName: currentPlan()
       })
     });
 
     const data = await res.json();
-    if (!res.ok || !data?.url) throw new Error(data?.error || "No checkout URL.");
+    if (!res.ok || !data?.url) throw new Error(data?.error || "No checkout URL returned.");
     window.location.href = data.url;
   } catch (err) {
     console.error("Checkout error:", err);
