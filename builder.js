@@ -367,6 +367,10 @@ const pricingData = [
 
 function renderPricing(selectedKey){
   const grid = document.getElementById('pricingGrid');
+  if (!grid) {
+    console.error('[pricing] #pricingGrid not found in DOM.');
+    return;
+  }
   grid.innerHTML = pricingData.map(tier => {
     const active = tier.key === selectedKey ? 'active' : '';
     const lis = tier.bullets.map(b => {
@@ -389,35 +393,42 @@ function renderPricing(selectedKey){
 }
 
 function openPricingModal(){
-  const selected = currentPlan(); // 'basic' | 'pro' | 'biz'
-  renderPricing(selected);
+  try {
+    const selected = currentPlan();         // 'basic' | 'pro' | 'biz'
+    renderPricing(selected);                // must populate cards before showing
+    document.body.classList.add('modal-open');
+    document.getElementById('pricingBackdrop')?.classList.add('show');
+    document.getElementById('pricingModal')?.setAttribute('aria-hidden','false');
 
-  document.body.classList.add('modal-open'); // lock scroll
-  document.getElementById('pricingBackdrop').classList.add('show');
-  document.getElementById('pricingModal').setAttribute('aria-hidden','false');
-
-  const grid = document.getElementById('pricingGrid');
-  grid.onclick = (e)=>{
-    const tierEl = e.target.closest('.tier');
-    if(!tierEl) return;
-    const key = tierEl.getAttribute('data-key');
-    if(e.target.matches('[data-action="choose"]')){
-      const radioValue = key === 'biz' ? 'business' : key;
-      const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
-      if (radio) radio.checked = true;
-      applyPlanLocks?.();
-      closePricingModal();
-    } else if(e.target.matches('[data-action="close"]')){
-      closePricingModal();
+    const grid = document.getElementById('pricingGrid');
+    if (grid) {
+      grid.onclick = (e)=>{
+        const tierEl = e.target.closest('.tier');
+        if(!tierEl) return;
+        const key = tierEl.getAttribute('data-key');
+        if(e.target.matches('[data-action="choose"]')){
+          const radioValue = key === 'biz' ? 'business' : key;
+          const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
+          if (radio) radio.checked = true;
+          applyPlanLocks?.();
+          closePricingModal();
+        } else if(e.target.matches('[data-action="close"]')){
+          closePricingModal();
+        }
+      };
+    } else {
+      console.error('[pricing] grid not available after open.');
     }
-  };
 
-  document.addEventListener('keydown', escCloser);
+    document.addEventListener('keydown', escCloser);
+  } catch (err) {
+    console.error('[pricing] failed to open modal:', err);
+  }
 }
 function closePricingModal(){
   document.body.classList.remove('modal-open');
-  document.getElementById('pricingBackdrop').classList.remove('show');
-  document.getElementById('pricingModal').setAttribute('aria-hidden','true');
+  document.getElementById('pricingBackdrop')?.classList.remove('show');
+  document.getElementById('pricingModal')?.setAttribute('aria-hidden','true');
   document.removeEventListener('keydown', escCloser);
 }
 function escCloser(e){ if (e.key === 'Escape') closePricingModal(); }
@@ -426,9 +437,7 @@ document.getElementById('openPricing')?.addEventListener('click', openPricingMod
 document.getElementById('pricingClose')?.addEventListener('click', closePricingModal);
 document.getElementById('pricingBackdrop')?.addEventListener('click', closePricingModal);
 
-// If auto-open on radio change felt spammy, keep this commented:
+// Keep auto-open disabled to avoid feeling spammy:
 // document.addEventListener('change', (e)=>{
 //   if (e.target.matches('input[name="plan"]')) openPricingModal();
 // });
-
-
