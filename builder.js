@@ -7,20 +7,17 @@ const STRIPE_PRICES = {
 
 const byId = (id) => document.getElementById(id);
 
-/* ====== Plan detection & locks (robust) ====== */
+/* ====== Plan detection & locks ====== */
 function currentPlan() {
-  // Works for either radios (name="plan") or a <select id="plan">
   const chosen =
     document.querySelector('input[name="plan"]:checked')?.value ||
     document.getElementById('plan')?.value ||
     'basic';
-
   const v = String(chosen).toLowerCase();
   if (['business', 'biz', 'business-monthly', 'enterprise'].includes(v)) return 'biz';
   if (['pro', 'professional'].includes(v)) return 'pro';
   return 'basic';
 }
-
 function toggleFields(ids, enabled) {
   ids.forEach((id) => {
     const el = byId(id);
@@ -29,29 +26,42 @@ function toggleFields(ids, enabled) {
     el.classList.toggle('disabled', !enabled);
   });
 }
-
 function applyPlanLocks() {
   const plan = currentPlan();
   const proEnabled = plan === 'pro' || plan === 'biz';
   const bizEnabled = plan === 'biz';
-
-  // Pro features
+  // Pro
   toggleFields(['services', 'testimonials', 'hours', 'address', 'formspree'], proEnabled);
-
-  // Business features
+  // Business
   toggleFields(['template', 'palette', 'brandColor', 'seoTitle', 'seoDescription', 'gaId'], bizEnabled);
-
   // Badge
   const badge = byId('planBadge');
   if (badge) badge.textContent = plan === 'biz' ? 'Business' : (plan === 'pro' ? 'Pro' : 'Basic');
 }
-
 document.addEventListener('DOMContentLoaded', () => {
   applyPlanLocks();
   document.addEventListener('change', (e) => {
     if (e.target.matches('input[name="plan"], #plan')) applyPlanLocks();
   });
 });
+
+/* ====== BG controls visibility ====== */
+function show(el, yes){ el.classList[yes ? 'remove' : 'add']('hide'); }
+function updateBgUI() {
+  const type = byId('bgType')?.value || 'default';
+  const upRow = byId('bgUploadRow');
+  const urlRow = byId('bgUrlRow');
+  const gradRow = byId('bgGradientRow');
+  const solidRow = byId('bgSolidRow');
+  show(upRow, type === 'image-upload');
+  show(urlRow, type === 'image-url');
+  show(gradRow, type === 'gradient');
+  show(solidRow, type === 'solid');
+}
+document.addEventListener('change', (e)=>{
+  if (e.target.id === 'bgType') updateBgUI();
+});
+document.addEventListener('DOMContentLoaded', updateBgUI);
 
 /* ====== Utils ====== */
 async function fileToDataURL(file) {
@@ -60,12 +70,52 @@ async function fileToDataURL(file) {
 }
 const lines = (t) => (t || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-/* ====== Site generator (same aesthetic as before) ====== */
+/* ====== Build site HTML with customizable background ====== */
+function buildBackgroundCSS(bg) {
+  const overlayAlpha = Math.max(0, Math.min(0.9, bg.overlay)); // 0..0.9
+  if (bg.type === 'image-upload' || bg.type === 'image-url') {
+    const img = bg.image || "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
+    return `
+      body{
+        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha})),
+          url("${img}") no-repeat center/cover fixed;
+      }`;
+  }
+  if (bg.type === 'gradient') {
+    return `
+      body{
+        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        background: radial-gradient(1200px 800px at 10% -10%, ${bg.color1}, transparent 60%),
+                    radial-gradient(1000px 700px at 90% 110%, ${bg.color2}, transparent 60%),
+                    #0b1221;
+      }`;
+  }
+  if (bg.type === 'solid') {
+    return `
+      body{
+        margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        background: ${bg.solid};
+      }`;
+  }
+  // default
+  return `
+    body{
+      margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
+        url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop")
+        no-repeat center/cover fixed;
+    }`;
+}
+
 function buildSiteHTML(opts) {
   const {
     businessName, description, logoDataURL, galleryDataURLs = [],
     servicesText = "", testimonialsText = "", hoursText = "", address = "",
-    ctaText, email, phone, instagram
+    ctaText, email, phone, instagram,
+    bg // {type, image, color1, color2, solid, overlay}
   } = opts;
 
   const services = lines(servicesText);
@@ -115,11 +165,9 @@ function buildSiteHTML(opts) {
 <title>${businessName}</title>
 <style>
   :root{ --brand:#2563eb; --ink:#0f172a }
-  *{ box-sizing:border-box } html,body{ height:100% } body{
-    margin:0;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:url("https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1920&q=80") no-repeat center/cover fixed;
-  }
-  .veil{ min-height:100%; background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55)); display:flex; flex-direction:column; }
+  *{ box-sizing:border-box } html,body{ height:100% }
+  ${buildBackgroundCSS(bg)}
+  .veil{ min-height:100%; background:linear-gradient(180deg,rgba(0,0,0,.0),rgba(0,0,0,.25)); display:flex; flex-direction:column; }
   header{ padding:22px 16px; display:flex; align-items:center; gap:12px; }
   header .logo{ height:44px; background:#fff; padding:4px; border-radius:8px }
   header h1{ margin:0; font-size:28px; text-shadow:0 2px 10px rgba(0,0,0,.4) }
@@ -156,7 +204,7 @@ function buildSiteHTML(opts) {
 </div></body></html>`;
 }
 
-/* ====== Gather fields (honor plan locks) ====== */
+/* ====== Gather fields (includes background) ====== */
 async function collectFormAsHTML() {
   const plan = currentPlan();
   const proEnabled = plan === "pro" || plan === "biz";
@@ -168,19 +216,41 @@ async function collectFormAsHTML() {
   const instagram    = (byId("instagram")?.value || "").trim();
   const ctaText      = (byId("ctaText")?.value || "Contact Us").trim();
 
+  // Logo
   let logoDataURL = "";
   const logoInput = byId("logo");
   if (logoInput?.files?.[0]) logoDataURL = await fileToDataURL(logoInput.files[0]);
 
+  // Gallery
   const galleryDataURLs = [];
   const galleryInput = byId("gallery");
   if (galleryInput?.files?.length) {
-    const files = Array.from(galleryInput.files).slice(0, 6); // keep preview responsive
+    const files = Array.from(galleryInput.files).slice(0, 6);
     for (const f of files) {
       if (f.size <= 1.5 * 1024 * 1024) galleryDataURLs.push(await fileToDataURL(f));
     }
   }
 
+  // Background
+  const bgType = byId("bgType")?.value || "default";
+  let bgImage = "";
+  if (bgType === "image-upload") {
+    const f = byId("bgUpload")?.files?.[0];
+    if (f) bgImage = await fileToDataURL(f);
+  } else if (bgType === "image-url") {
+    bgImage = (byId("bgUrl")?.value || "").trim();
+  }
+  const bgOverlayPct = parseInt(byId("bgOverlay")?.value || "55", 10);
+  const bg = {
+    type: bgType,
+    image: bgImage,
+    color1: byId("bgColor1")?.value || "#0ea5e9",
+    color2: byId("bgColor2")?.value || "#2563eb",
+    solid: byId("bgSolid")?.value || "#0b1221",
+    overlay: isNaN(bgOverlayPct) ? 0.55 : Math.max(0, Math.min(0.9, bgOverlayPct / 100))
+  };
+
+  // Pro fields
   const servicesText     = proEnabled ? (byId("services")?.value || "") : "";
   const testimonialsText = proEnabled ? (byId("testimonials")?.value || "") : "";
   const hoursText        = proEnabled ? (byId("hours")?.value || "") : "";
@@ -189,7 +259,8 @@ async function collectFormAsHTML() {
   return buildSiteHTML({
     businessName, description, logoDataURL, galleryDataURLs,
     servicesText, testimonialsText, hoursText, address,
-    ctaText, email, phone, instagram
+    ctaText, email, phone, instagram,
+    bg
   });
 }
 
@@ -217,7 +288,7 @@ byId("builderForm").addEventListener("submit", async (e) => {
     preview.innerHTML = `
       <p><strong>Preview (not downloadable):</strong></p>
       <iframe src="${url}" width="100%" height="620" style="border:1px solid #e2e8f0;border-radius:12px;"></iframe>
-      <p style="margin-top:8px;color:#475569">
+      <p style="margin-top:8px;color:#e5e7eb">
         Want the file? Choose a plan and complete checkout — you’ll unlock the download on the success page.
       </p>`;
   } catch (err) {
@@ -231,12 +302,11 @@ function selectedPlanConfig() {
   const plan = currentPlan();
   return plan === "pro" ? STRIPE_PRICES.pro : (plan === "biz" ? STRIPE_PRICES.biz : STRIPE_PRICES.basic);
 }
-
 byId("checkoutBtn").addEventListener("click", async () => {
   const cfg = selectedPlanConfig();
   try {
     const html = await collectFormAsHTML();
-    saveSiteToLocalStorage(html); // ensure saved before redirect
+    saveSiteToLocalStorage(html);
 
     const res = await fetch("/.netlify/functions/create-checkout", {
       method: "POST",
