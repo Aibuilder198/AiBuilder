@@ -430,3 +430,5 @@ document.getElementById('pricingBackdrop')?.addEventListener('click', closePrici
 // document.addEventListener('change', (e)=>{
 //   if (e.target.matches('input[name="plan"]')) openPricingModal();
 // });
+
+
