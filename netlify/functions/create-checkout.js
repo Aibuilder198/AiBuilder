@@ -3,11 +3,6 @@
 
 "use strict";
 
-const qs = (obj) =>
-  Object.entries(obj)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join("&");
-
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: { Allow: "POST" }, body: "Method Not Allowed" };
@@ -20,8 +15,8 @@ exports.handler = async (event) => {
     const {
       items = [],                 // [{ price: "...", quantity: 1 }]
       mode = "payment",           // "payment" | "subscription"
-      success_url,
-      cancel_url,
+      success_url,                // optional from client
+      cancel_url,                 // optional from client
       sitePayload = {},           // { businessName, description, htmlBase64 }
       client_reference_id,
       planName
@@ -32,19 +27,21 @@ exports.handler = async (event) => {
     }
 
     const origin = process.env.URL || "http://localhost:8888";
-    const successURL = success_url || `${origin}/success`;
-    const cancelURL  = cancel_url  || `${origin}/cancel`;
 
-    // Build metadata (Stripe limit: max 40 keys)
+    // 🔴 IMPORTANT: We append ?session_id={CHECKOUT_SESSION_ID}
+    // so /success page can verify the purchase and unlock download.
+    const successURL = (success_url || `${origin}/success`) + `?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelURL  =  cancel_url  || `${origin}/cancel`;
+
+    // --- compact metadata (and chunk the generated HTML) ---
     const metadata = {};
     if (sitePayload.businessName) metadata.businessName = String(sitePayload.businessName).slice(0, 200);
     if (sitePayload.description)  metadata.description  = String(sitePayload.description).slice(0, 500);
     if (planName)                 metadata.planName     = String(planName).slice(0, 100);
 
-    // Chunk the generated HTML (base64) into metadata keys
     if (sitePayload.htmlBase64) {
       const s = String(sitePayload.htmlBase64);
-      const size = 480; // conservative per-key size
+      const size = 480;
       const parts = [];
       for (let i = 0; i < s.length; i += size) parts.push(s.slice(i, i + size));
       const max = Math.min(parts.length, 48);
@@ -53,23 +50,21 @@ exports.handler = async (event) => {
       metadata.html_encoding = "base64";
     }
 
-    // Stripe expects application/x-www-form-urlencoded
+    // Stripe requires x-www-form-urlencoded
     const body = new URLSearchParams();
     body.append("mode", mode === "subscription" ? "subscription" : "payment");
     body.append("success_url", successURL);
     body.append("cancel_url", cancelURL);
     if (client_reference_id) body.append("client_reference_id", client_reference_id);
 
-    // line_items array
+    // line_items
     items.forEach((it, idx) => {
       body.append(`line_items[${idx}][price]`, it.price);
       body.append(`line_items[${idx}][quantity]`, String(it.quantity || 1));
     });
 
-    // metadata fields
-    Object.entries(metadata).forEach(([k, v]) => {
-      body.append(`metadata[${k}]`, String(v));
-    });
+    // metadata
+    Object.entries(metadata).forEach(([k, v]) => body.append(`metadata[${k}]`, String(v)));
 
     const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -86,6 +81,7 @@ exports.handler = async (event) => {
       return { statusCode: resp.status, body: JSON.stringify(data) };
     }
 
+    // We return the Stripe-hosted checkout URL to redirect the user
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
