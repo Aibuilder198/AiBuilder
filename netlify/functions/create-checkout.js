@@ -1,6 +1,4 @@
 // netlify/functions/create-checkout.js
-// Create Stripe Checkout Session via HTTPS (no npm deps)
-
 "use strict";
 
 exports.handler = async (event) => {
@@ -13,11 +11,11 @@ exports.handler = async (event) => {
     if (!STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const {
-      items = [],                 // [{ price: "...", quantity: 1 }]
-      mode = "payment",           // "payment" | "subscription"
-      success_url,                // optional from client
-      cancel_url,                 // optional from client
-      sitePayload = {},           // { businessName, description, htmlBase64 }
+      items = [],
+      mode = "payment",
+      success_url,
+      cancel_url,
+      sitePayload = {},      // { businessName, description, htmlBase64 }
       client_reference_id,
       planName
     } = JSON.parse(event.body || "{}");
@@ -27,44 +25,38 @@ exports.handler = async (event) => {
     }
 
     const origin = process.env.URL || "http://localhost:8888";
-
-    // 🔴 IMPORTANT: We append ?session_id={CHECKOUT_SESSION_ID}
-    // so /success page can verify the purchase and unlock download.
     const successURL = (success_url || `${origin}/success`) + `?session_id={CHECKOUT_SESSION_ID}`;
     const cancelURL  =  cancel_url  || `${origin}/cancel`;
 
-    // --- compact metadata (and chunk the generated HTML) ---
+    // Build metadata (<= 40 keys, <= 500 chars per key)
     const metadata = {};
     if (sitePayload.businessName) metadata.businessName = String(sitePayload.businessName).slice(0, 200);
     if (sitePayload.description)  metadata.description  = String(sitePayload.description).slice(0, 500);
     if (planName)                 metadata.planName     = String(planName).slice(0, 100);
 
+    // Chunk the base64 HTML into metadata keys
     if (sitePayload.htmlBase64) {
       const s = String(sitePayload.htmlBase64);
-      const size = 480;
+      const SIZE = 480;                   // stay under 500/entry
+      const MAX_KEYS = 48;                // stay under 40-50 total metadata keys
       const parts = [];
-      for (let i = 0; i < s.length; i += size) parts.push(s.slice(i, i + size));
-      const max = Math.min(parts.length, 48);
-      for (let i = 0; i < max; i++) metadata[`html_${i}`] = parts[i];
-      metadata.html_parts = String(max);
+      for (let i = 0; i < s.length; i += SIZE) parts.push(s.slice(i, i + SIZE));
+      const count = Math.min(parts.length, MAX_KEYS);
+      for (let i = 0; i < count; i++) metadata[`html_${i}`] = parts[i];
+      metadata.html_parts = String(count);
       metadata.html_encoding = "base64";
     }
 
-    // Stripe requires x-www-form-urlencoded
     const body = new URLSearchParams();
     body.append("mode", mode === "subscription" ? "subscription" : "payment");
     body.append("success_url", successURL);
     body.append("cancel_url", cancelURL);
     if (client_reference_id) body.append("client_reference_id", client_reference_id);
-
-    // line_items
     items.forEach((it, idx) => {
       body.append(`line_items[${idx}][price]`, it.price);
       body.append(`line_items[${idx}][quantity]`, String(it.quantity || 1));
     });
-
-    // metadata
-    Object.entries(metadata).forEach(([k, v]) => body.append(`metadata[${k}]`, String(v)));
+    Object.entries(metadata).forEach(([k, v]) => body.append(`metadata[${k}]`, v));
 
     const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -81,7 +73,6 @@ exports.handler = async (event) => {
       return { statusCode: resp.status, body: JSON.stringify(data) };
     }
 
-    // We return the Stripe-hosted checkout URL to redirect the user
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
