@@ -3,249 +3,280 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Create a Simple Business Website powered by AI</title>
+  <title>AI Website Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@600;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+
   <style>
     :root {
-      --bg:#0b1221; --card:rgba(255,255,255,.08); --border:rgba(255,255,255,.18);
-      --ink:#eaf0ff; --muted:#b6c2e8;
+      --bg: #0b1221;
+      --panel: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.16);
+      --text: #e5e7eb;
+      --muted: #a1a1aa;
+      --accent: #2563eb;
+      --accent-2: #16a34a;
+      --danger: #ef4444;
+      --radius: 14px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
-    h1{margin:0 0 8px}
-    .muted{color:var(--muted)}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;backdrop-filter:blur(10px)}
-    label{display:block;font-weight:700;margin:10px 0 6px}
-    input[type="text"],input[type="email"],input[type="url"],input[type="color"],textarea,select{
-      width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);
-      color:var(--ink);outline:none
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(60% 120% at 100% 0%, #1a144a 0%, #0b1221 60%),
+        radial-gradient(60% 120% at 0% 100%, #2b103d 0%, #0b1221 60%);
+      min-height:100vh;
     }
-    textarea{min-height:110px;resize:vertical}
+    .wrap{max-width:1160px;margin:32px auto;padding:0 16px}
+    h1{font-weight:800;letter-spacing:.2px;margin:0 0 16px}
+    .hint{color:var(--muted);margin-bottom:24px}
+    .grid{
+      display:grid;gap:16px;
+      grid-template-columns: 1.1fr .9fr;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px 16px 20px;
+      backdrop-filter: blur(8px);
+    }
+    .card h2{margin:6px 0 12px;font-weight:800}
+    label{display:block;font-size:14px;color:#c7c9d3;margin:10px 0 6px}
+    input[type="text"], input[type="url"], input[type="email"], input[type="tel"], textarea, select {
+      width:100%;
+      background:rgba(255,255,255,0.06);
+      border:1px solid var(--border);
+      color:var(--text);
+      border-radius:12px;
+      padding:12px;
+      outline:none;
+    }
+    textarea{min-height:120px;resize:vertical}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    .btnBar{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
-    button{background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:800}
-    button.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2)}
-    a#downloadLink{display:none;margin-top:10px;padding:12px 16px;background:#16a34a;color:#fff;border-radius:12px;text-decoration:none;font-weight:800}
-    .hint{font-size:13px;color:#c9d3ff}
-    .pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(99,102,241,.25);font-weight:800}
-    iframe{width:100%;min-height:520px;border:1px solid var(--border);border-radius:12px;background:#0e172a}
-    .hide{display:none!important}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .btnBar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{
+      border:0;border-radius:12px;
+      padding:12px 16px;font-weight:800;cursor:pointer;
+    }
+    .primary{background:var(--accent);color:#fff}
+    .secondary{background:#334155;color:#e5e7eb}
+    .success{background:var(--accent-2);color:#fff}
+    .danger{background:var(--danger);color:#fff}
+    .radioRow {display:flex;gap:16px;align-items:center; flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;background:#334155;color:#fff;font-weight:800}
+    .planDetails{color:#a5b4fc; cursor:pointer; text-decoration:underline}
+    .muted{color:var(--muted)}
+    .locked{opacity:.5; pointer-events:none}
+    iframe.preview{width:100%;height:720px;border:0;border-radius:12px;background:#fff}
+    .small{font-size:12px;color:var(--muted)}
+    .sectionTitle{margin-top:20px;margin-bottom:8px;font-weight:800}
+    .twoCol{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    .help{font-size:12px;color:#cbd5e1;margin-top:6px}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#1f2937;border:1px solid #334155;color:#93c5fd;font-weight:700;font-size:12px;margin-left:8px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Create a Simple Business Website powered by AI</h1>
-    <p class="muted">Preview is free. Download unlocks after payment.</p>
+    <h1>Create a Simple Business Website powered by AI <span class="tag">Preview for free</span></h1>
+    <div class="hint">Preview is free. Download unlocks after payment.</div>
 
-    <!-- Plan -->
+    <!-- Plan selector -->
     <div class="card">
-      <h2>Choose a Plan <span class="pill" id="planBadge">Basic</span></h2>
-      <form id="planForm">
+      <h2>Choose a Plan <span id="activePlanPill" class="pill">Basic</span></h2>
+      <div class="radioRow">
         <label><input type="radio" name="plan" value="basic" checked> Basic ($20 one-time)</label>
-        &nbsp;&nbsp;
         <label><input type="radio" name="plan" value="pro"> Pro ($29/mo)</label>
-        &nbsp;&nbsp;
         <label><input type="radio" name="plan" value="business"> Business ($79/mo)</label>
-      </form>
-      <p class="hint" style="margin-top:6px">
-        <strong>Basic:</strong> single page (+logo, a few images).  
-        <strong>Pro:</strong> adds Services, Testimonials, Hours/Location, Contact form.  
-        <strong>Business:</strong> adds Themes, Palette, Brand color, SEO, GA4, Search Console, robots.txt & sitemap.  
-      </p>
+        <span id="viewPlan" class="planDetails">View plan details</span>
+      </div>
+      <div class="help">
+        <strong>Basic</strong>: single page (+logo, up to a few images).
+        <strong>Pro</strong>: adds Services, Testimonials, Hours/Location, Contact form.
+        <strong>Business</strong>: adds Themes, Palette, Custom Brand Color, SEO, Analytics.
+      </div>
     </div>
 
-    <div class="grid">
-      <!-- Form -->
+    <div class="grid" style="margin-top:16px">
+      <!-- Left: form -->
       <div class="card">
-        <form id="siteForm">
-          <h2>Content</h2>
-          <label for="businessName">Business Name</label>
-          <input id="businessName" type="text" placeholder="e.g., Pristine Green" required />
+        <h2>Content</h2>
 
-          <label for="businessDescription">Business Description</label>
-          <textarea id="businessDescription" placeholder="What do you do?"></textarea>
+        <label for="businessName">Business Name</label>
+        <input id="businessName" type="text" placeholder="e.g., Pristine Green" />
 
-          <div class="row">
+        <label for="description">Business Description</label>
+        <textarea id="description" placeholder="What do you do?"></textarea>
+
+        <div class="row">
+          <div>
+            <label for="logo">Upload Logo</label>
+            <input id="logo" type="file" accept="image/*" />
+          </div>
+          <div>
+            <label for="gallery">Gallery Images (up to 12)</label>
+            <input id="gallery" type="file" accept="image/*" multiple />
+            <div class="small">Basic preview uses ~6 images for speed.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="email">Contact Email</label>
+            <input id="email" type="email" placeholder="hello@example.com" />
+          </div>
+          <div>
+            <label for="phone">Phone</label>
+            <input id="phone" type="tel" placeholder="(555) 123-4567" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="instagram">Instagram URL</label>
+            <input id="instagram" type="url" placeholder="https://instagram.com/yourhandle" />
+          </div>
+          <div>
+            <label for="ctaText">CTA Button Text</label>
+            <input id="ctaText" type="text" placeholder="Contact Us" />
+          </div>
+        </div>
+
+        <!-- Pro features -->
+        <div id="proFields" class="">
+          <h3 class="sectionTitle">Pro Sections</h3>
+          <div class="twoCol">
             <div>
-              <label for="logo">Upload Logo</label>
-              <input id="logo" type="file" accept="image/*" />
+              <label for="services">Services (one per line)</label>
+              <textarea id="services" placeholder="Lawn care&#10;Trimming"></textarea>
             </div>
             <div>
-              <label for="gallery">Gallery Images</label>
-              <input id="gallery" type="file" accept="image/*" multiple />
+              <label for="testimonials">Testimonials (Name | Quote, one per line)</label>
+              <textarea id="testimonials" placeholder="Jane | Great service!&#10;Mike | Fast and professional!"></textarea>
             </div>
           </div>
-
-          <div class="row">
+          <div class="twoCol">
             <div>
-              <label for="email">Contact Email</label>
-              <input id="email" type="email" placeholder="hello@example.com" />
+              <label for="hours">Hours / Location</label>
+              <textarea id="hours" placeholder="Mon–Fri: 9am–5pm&#10;123 Main St, City"></textarea>
             </div>
             <div>
-              <label for="phone">Phone</label>
-              <input id="phone" type="text" placeholder="(555) 123-4567" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="instagram">Instagram URL</label>
-              <input id="instagram" type="url" placeholder="https://instagram.com/yourbrand" />
-            </div>
-            <div>
-              <label for="ctaText">CTA Button Text</label>
-              <input id="ctaText" type="text" placeholder="Contact Us" />
+              <label for="contactForm">Contact Form Destination Email</label>
+              <input id="contactForm" type="email" placeholder="forms@yourdomain.com" />
             </div>
           </div>
+        </div>
 
-          <!-- Background -->
-          <h2>Background</h2>
-          <label for="bgType">Background Type</label>
-          <select id="bgType">
-            <option value="default" selected>Default</option>
-            <option value="image-upload">Upload Image</option>
-            <option value="image-url">Image URL</option>
-            <option value="gradient">Gradient</option>
-            <option value="solid">Solid Color</option>
-          </select>
-
-          <div class="row hide" id="bgUploadRow">
+        <!-- Business features -->
+        <div id="businessFields" class="">
+          <h3 class="sectionTitle">Brand & Theme (Business plan)</h3>
+          <div class="twoCol">
             <div>
-              <label for="bgUpload">Upload Background Image</label>
-              <input id="bgUpload" type="file" accept="image/*" />
-            </div>
-            <div>
-              <label for="bgOverlay">Overlay Strength</label>
-              <input id="bgOverlay" type="range" min="0" max="90" value="55" />
-            </div>
-          </div>
-
-          <div id="bgUrlRow" class="hide">
-            <label for="bgUrl">Image URL</label>
-            <input id="bgUrl" type="url" placeholder="https://example.com/background.jpg" />
-          </div>
-
-          <div class="row hide" id="bgGradientRow">
-            <div>
-              <label for="bgColor1">Color 1</label>
-              <input id="bgColor1" type="color" value="#0ea5e9" />
-            </div>
-            <div>
-              <label for="bgColor2">Color 2</label>
-              <input id="bgColor2" type="color" value="#2563eb" />
-            </div>
-          </div>
-
-          <div id="bgSolidRow" class="hide">
-            <label for="bgSolid">Solid Color</label>
-            <input id="bgSolid" type="color" value="#0b1221" />
-          </div>
-
-          <!-- PRO -->
-          <h2>Pro Features</h2>
-          <label for="services">Services (one per line)</label>
-          <textarea id="services"></textarea>
-
-          <label for="testimonials">Testimonials (Name | Quote)</label>
-          <textarea id="testimonials"></textarea>
-
-          <div class="row">
-            <div>
-              <label for="hours">Hours</label>
-              <textarea id="hours"></textarea>
-            </div>
-            <div>
-              <label for="address">Address</label>
-              <input id="address" type="text" />
-            </div>
-          </div>
-
-          <!-- BUSINESS -->
-          <h2>Business Features</h2>
-          <div class="row3">
-            <div>
-              <label for="template">Theme</label>
-              <select id="template">
-                <option value="classic">Classic</option>
-                <option value="bold">Bold</option>
-                <option value="minimal">Minimal</option>
+              <label for="theme">Theme</label>
+              <select id="theme">
+                <option value="classic" selected>Classic</option>
+                <option value="dark">Dark</option>
+                <option value="clean">Clean</option>
               </select>
             </div>
             <div>
-              <label for="palette">Palette</label>
-              <select id="palette">
-                <option value="blue">Blue</option>
-                <option value="emerald">Emerald</option>
-                <option value="rose">Rose</option>
-                <option value="slate">Slate</option>
-              </select>
-            </div>
-            <div>
-              <label for="brandColor">Custom Brand Color</label>
-              <input id="brandColor" type="color" value="#2563eb" />
+              <label for="brandColor">Brand Color (hex)</label>
+              <input id="brandColor" type="text" placeholder="#2563eb" />
             </div>
           </div>
 
-          <h2>SEO & Analytics</h2>
+          <div class="twoCol">
+            <div>
+              <label for="backgroundType">Background</label>
+              <select id="backgroundType">
+                <option value="gradient">Curated gradient</option>
+                <option value="image">Upload image</option>
+                <option value="solid">Solid color</option>
+              </select>
+            </div>
+            <div id="bgUploadCol" style="display:none">
+              <label for="backgroundImage">Upload Background Image</label>
+              <input id="backgroundImage" type="file" accept="image/*" />
+            </div>
+          </div>
+
+          <h3 class="sectionTitle">SEO & Analytics</h3>
           <label for="seoTitle">SEO Title</label>
-          <input id="seoTitle" type="text" />
+          <input id="seoTitle" type="text" placeholder="Business name or keyword phrase" />
 
-          <label for="seoDescription">SEO Description</label>
-          <textarea id="seoDescription"></textarea>
+          <label for="seoDesc">SEO Description</label>
+          <textarea id="seoDesc" placeholder="One or two compelling sentences for search engines."></textarea>
 
-          <label for="gaId">Google Analytics ID</label>
-          <input id="gaId" type="text" placeholder="G-XXXXXXXXX" />
+          <div class="twoCol">
+            <div>
+              <label for="gaId">Google Analytics ID</label>
+              <input id="gaId" type="text" placeholder="G-XXXXXXXXXX" />
+            </div>
+            <div>
+              <label for="canonicalUrl">Canonical Site URL</label>
+              <input id="canonicalUrl" type="url" placeholder="https://yourdomain.com" />
+            </div>
+          </div>
 
-          <label><input id="allowIndexing" type="checkbox" checked> Allow search engines to index this site</label>
-          <label for="siteUrl">Canonical Site URL</label>
-          <input id="siteUrl" type="url" placeholder="https://yourdomain.com" />
+          <label><input id="allowIndexing" type="checkbox" checked /> Allow search engines to index this site</label>
 
           <label for="gscToken">Google Search Console token</label>
-          <input id="gscToken" type="text" />
+          <input id="gscToken" type="text" placeholder="Search Console HTML verification token (optional)" />
+        </div>
 
-          <div class="btnBar">
-            <button type="submit" id="previewBtn">Generate Website (Preview)</button>
-            <a id="downloadLink" href="#" class="hide">Download ZIP</a>
-            <button type="button" id="buyBtn" class="secondary">Buy to Unlock</button>
+        <!-- AI Logo Maker -->
+        <h2 class="sectionTitle">AI Logo Maker</h2>
+        <div class="row">
+          <div>
+            <label for="logoName">Brand / Business Name</label>
+            <input id="logoName" type="text" placeholder="e.g., Pristine Green" />
           </div>
-        </form>
+          <div>
+            <label for="logoSlogan">Slogan (optional)</label>
+            <input id="logoSlogan" type="text" placeholder="We mow for the low" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="logoIndustry">Industry</label>
+            <input id="logoIndustry" type="text" placeholder="lawn care, cleaning, cafe, tech" />
+          </div>
+          <div>
+            <label for="logoStyle">Style</label>
+            <select id="logoStyle">
+              <option value="modern" selected>Modern</option>
+              <option value="bold">Bold</option>
+              <option value="friendly">Friendly</option>
+              <option value="elegant">Elegant</option>
+            </select>
+          </div>
+        </div>
+        <label for="logoCustomColors">Custom Colors (optional, 2–4 hex values comma-separated)</label>
+        <input id="logoCustomColors" type="text" placeholder="#2563eb, #f59e0b, #0b1221, #f8fafc" />
+        <div class="btnBar">
+          <button type="button" class="secondary" onclick="__LogoAI__.handleGenerateUI()">Generate Logos</button>
+        </div>
+        <div id="logoResults" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px"></div>
+
+        <div class="btnBar" style="margin-top:18px">
+          <button id="previewBtn" class="primary" type="button">Generate Website (Preview)</button>
+          <button id="downloadBtn" class="success locked" type="button" title="Complete payment to unlock">Download ZIP</button>
+        </div>
+        <div class="small" id="gateHelp">Download unlocks after payment (success page verification).</div>
       </div>
 
-      <!-- Preview -->
+      <!-- Right: live preview -->
       <div class="card">
         <h2>Live Preview</h2>
-        <iframe id="preview" title="Preview"></iframe>
+        <iframe id="previewFrame" class="preview"></iframe>
       </div>
     </div>
   </div>
 
-  <!-- JSZip -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- SCRIPTS -->
+  <script src="logo-ai.js"></script>
   <script src="builder.js"></script>
-
-  <script>
-    // update plan badge
-    const badge = document.getElementById('planBadge');
-    document.getElementById('planForm').addEventListener('change', (e) => {
-      if (e.target.name === 'plan') {
-        badge.textContent = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1);
-      }
-    });
-
-    // toggle background UI
-    document.getElementById('bgType').addEventListener('change', () => {
-      const v = document.getElementById('bgType').value;
-      ['bgUploadRow','bgUrlRow','bgGradientRow','bgSolidRow'].forEach(id=>{
-        document.getElementById(id).classList.add('hide');
-      });
-      if(v==='image-upload') document.getElementById('bgUploadRow').classList.remove('hide');
-      if(v==='image-url') document.getElementById('bgUrlRow').classList.remove('hide');
-      if(v==='gradient') document.getElementById('bgGradientRow').classList.remove('hide');
-      if(v==='solid') document.getElementById('bgSolidRow').classList.remove('hide');
-    });
-  </script>
 </body>
 </html>
