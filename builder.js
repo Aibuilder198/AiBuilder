@@ -1,6 +1,6 @@
 // ===== builder.js =====
 
-/* ---------- Helpers ---------- */
+/* ---------- Shortcuts ---------- */
 const $ = (id) => document.getElementById(id);
 const val = (id) => ($(id)?.value || "").trim();
 const fileToDataURL = (file) =>
@@ -11,54 +11,83 @@ const fileToDataURL = (file) =>
     r.readAsDataURL(file);
   });
 
-/* ---------- Plans & Gating ---------- */
+/* ---------- Plan gating ---------- */
 function currentPlan() {
   const checked = document.querySelector('input[name="plan"]:checked');
   return (checked?.value || "basic").toLowerCase();
 }
-
-function toggleDisabled(ids, enabled) {
+function toggleDisabled(ids, on) {
   ids.forEach((id) => {
     const el = $(id);
     if (!el) return;
-    el.disabled = !enabled;
-    el.classList.toggle("disabled", !enabled);
+    el.disabled = !on;
+    el.classList.toggle("disabled", !on);
   });
 }
-
 function applyPlanLocks() {
   const plan = currentPlan();
   const isPro = plan === "pro" || plan === "business";
   const isBiz = plan === "business";
 
-  // Pro unlocks:
+  toggleDisabled(["services","testimonials","hours","address","formspree"], isPro);
   toggleDisabled(
-    ["services", "testimonials", "hours", "address", "formspree"],
-    isPro
-  );
-
-  // Business unlocks:
-  toggleDisabled(
-    [
-      "template",
-      "palette",
-      "brandColor",
-      "seoTitle",
-      "seoDescription",
-      "gaId",
-      "allowIndexing",
-      "siteUrl",
-      "gscToken",
-    ],
+    ["template","palette","brandColor","seoTitle","seoDescription","gaId","allowIndexing","siteUrl","gscToken"],
     isBiz
   );
 }
 
-/* ---------- Background UI toggle ---------- */
-function show(el, on) {
-  if (!el) return;
-  el.classList[on ? "remove" : "add"]("hide");
+/* ---------- Payment Gate ---------- */
+let PAID = localStorage.getItem("paid") === "1";
+
+function updateDownloadUI() {
+  const download = $("downloadLink");
+  const buy = $("buyBtn");
+  if (!download || !buy) return;
+  if (PAID) {
+    download.classList.remove("hide");
+    download.style.display = "inline-block";
+    buy.classList.add("hide");
+  } else {
+    download.classList.add("hide");
+    download.style.display = "none";
+    buy.classList.remove("hide");
+  }
 }
+
+async function verifyFromURL() {
+  const params = new URLSearchParams(location.search);
+  const sid = params.get("session_id");
+  if (!sid) return;
+  try {
+    const r = await fetch("/.netlify/functions/verify-session?session_id=" + encodeURIComponent(sid));
+    const data = await r.json();
+    if (data?.paid) {
+      PAID = true;
+      localStorage.setItem("paid", "1");
+    }
+  } catch (e) {
+    console.warn("verify-session failed:", e);
+  }
+}
+
+async function startCheckout() {
+  const plan = currentPlan(); // "basic" | "pro" | "business"
+  try {
+    const res = await fetch("/.netlify/functions/create-checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ plan, successUrl: window.location.origin + window.location.pathname })
+    });
+    const data = await res.json();
+    if (data?.url) window.location.href = data.url;
+    else alert("Could not start checkout. Please try again.");
+  } catch (e) {
+    alert("Checkout error: " + e.message);
+  }
+}
+
+/* ---------- Background UI toggle ---------- */
+function show(el, on) { if (el) el.classList[on ? "remove" : "add"]("hide"); }
 function updateBgUI() {
   const v = $("bgType")?.value || "default";
   show($("bgUploadRow"), v === "image-upload");
@@ -83,15 +112,11 @@ function paletteToColors(palette, brandColorInput) {
   return { brand, bg1: base.bg1, bg2: base.bg2 };
 }
 
-/* ---------- SEO / Head tags ---------- */
+/* ---------- SEO bits ---------- */
 function buildJsonLd(site) {
-  const openingHours = (site.hours || [])
-    .map((s) => s.trim())
-    .filter(Boolean);
-
   const sameAs = [];
   if (site.instagram) sameAs.push(site.instagram);
-
+  const openingHours = (site.hours || []).map((s)=>s.trim()).filter(Boolean);
   const obj = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -102,65 +127,31 @@ function buildJsonLd(site) {
     sameAs: sameAs.length ? sameAs : undefined,
     openingHours: openingHours.length ? openingHours : undefined,
   };
-  if (site.address) {
-    obj.address = { "@type": "PostalAddress", streetAddress: site.address };
-  }
+  if (site.address) obj.address = { "@type": "PostalAddress", streetAddress: site.address };
   return obj;
 }
-
-function escapeHtml(s = "") {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function buildHeadTags(site) {
+function escapeHtml(s=""){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function buildHeadTags(site){
   const isBiz = site.plan === "business";
   const allowIndex = isBiz && site.allowIndexing;
   const robots = allowIndex ? "index,follow" : "noindex,nofollow";
-
   const title = isBiz && site.seoTitle ? site.seoTitle : site.businessName;
-  const desc =
-    isBiz && site.seoDescription ? site.seoDescription : site.description || "";
-
-  const canonical =
-    isBiz && site.siteUrl
-      ? `<link rel="canonical" href="${escapeHtml(site.siteUrl)}">`
-      : "";
-
-  const gsc =
-    isBiz && site.gscToken
-      ? `<meta name="google-site-verification" content="${escapeHtml(
-          site.gscToken
-        )}">`
-      : "";
-
+  const desc = isBiz && site.seoDescription ? site.seoDescription : site.description || "";
+  const canonical = isBiz && site.siteUrl ? `<link rel="canonical" href="${escapeHtml(site.siteUrl)}">` : "";
+  const gsc = isBiz && site.gscToken ? `<meta name="google-site-verification" content="${escapeHtml(site.gscToken)}">` : "";
   const og = `
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(desc)}">
 ${site.siteUrl ? `<meta property="og:url" content="${escapeHtml(site.siteUrl)}">` : ""}
 <meta property="og:type" content="website">`;
-
   const tw = `
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">`;
-
   const jsonLd = JSON.stringify(buildJsonLd(site));
-
-  const ga = isBiz && site.gaId
-    ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(
-        site.gaId
-      )}"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); gtag('config', '${escapeHtml(site.gaId)}');
-</script>`
-    : "";
-
+  const ga = isBiz && site.gaId ? `
+<script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(site.gaId)}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);} gtag('js',new Date()); gtag('config','${escapeHtml(site.gaId)}');</script>` : "";
   return `
 <meta name="robots" content="${robots}">
 ${gsc}
@@ -173,130 +164,63 @@ ${tw}
 ${ga}`;
 }
 
-/* ---------- Background CSS for generated site ---------- */
-function backgroundCSS(bg, colors) {
+/* ---------- Background CSS ---------- */
+function backgroundCSS(bg, colors){
   const overlay = Math.max(0, Math.min(0.9, bg.overlay || 0.55));
   if (bg.type === "image-upload" || bg.type === "image-url") {
-    const img =
-      bg.image ||
-      "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
-    return `
-body{
-  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,${overlay}), rgba(0,0,0,${overlay})),
-    url("${img}") center/cover fixed no-repeat;
-}`;
+    const img = bg.image || "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:linear-gradient(180deg, rgba(0,0,0,${overlay}), rgba(0,0,0,${overlay})), url("${img}") center/cover fixed no-repeat;}`;
   }
   if (bg.type === "gradient") {
-    return `
-body{
-  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:
-    radial-gradient(1200px 800px at 10% -10%, ${colors.bg1}, transparent 60%),
-    radial-gradient(1000px 700px at 90% 110%, ${colors.bg2}, transparent 60%),
-    #0b1221;
-}`;
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:radial-gradient(1200px 800px at 10% -10%, ${colors.bg1}, transparent 60%),
+           radial-gradient(1000px 700px at 90% 110%, ${colors.bg2}, transparent 60%), #0b1221;}`;
   }
   if (bg.type === "solid") {
-    return `
-body{
-  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:${bg.solid || "#0b1221"};
-}`;
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:${bg.solid||"#0b1221"};}`;
   }
   // default
-  return `
-body{
-  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:
-    linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
-    url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop") center/cover fixed no-repeat;
-}`;
+  return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+background:linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)), url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop") center/cover fixed no-repeat;}`;
 }
 
-/* ---------- Build full page HTML ---------- */
-function buildPageHTML(site) {
+/* ---------- Generated page ---------- */
+function buildPageHTML(site){
   const head = buildHeadTags(site);
   const cssBg = backgroundCSS(site.bg, site.colors);
   const brand = site.colors.brand;
 
-  // Optional blocks
-  const logoBlock = site.logoDataURL
-    ? `<img class="logo" src="${site.logoDataURL}" alt="Logo">`
-    : "";
+  const logo = site.logoDataURL ? `<img class="logo" src="${site.logoDataURL}" alt="Logo">` : "";
+  const gallery = (site.galleryDataURLs||[]).length ? `
+<section class="card"><h2>Gallery</h2><div class="grid">
+${site.galleryDataURLs.map(src=>`<figure class="thumb"><img src="${src}" alt=""></figure>`).join("")}
+</div></section>` : "";
 
-  const galleryBlock =
-    site.galleryDataURLs && site.galleryDataURLs.length
-      ? `<section class="card">
-  <h2>Gallery</h2>
-  <div class="grid">
-    ${site.galleryDataURLs
-      .map((src) => `<figure class="thumb"><img src="${src}" alt=""></figure>`)
-      .join("")}
-  </div>
-</section>`
-      : "";
+  const services = (site.services||[]).length ? `
+<section class="card"><h2>Services</h2><ul class="list">
+${site.services.map(s=>`<li>${escapeHtml(s)}</li>`).join("")}
+</ul></section>` : "";
 
-  const servicesList =
-    site.services?.length
-      ? `<section class="card">
-  <h2>Services</h2>
-  <ul class="list">${site.services.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
-</section>`
-      : "";
+  const testis = (site.testimonials||[]).length ? `
+<section class="card"><h2>Testimonials</h2><div class="testis">
+${site.testimonials.map(t=>`<blockquote><p>“${escapeHtml(t.quote)}”</p><footer>— ${escapeHtml(t.name)}</footer></blockquote>`).join("")}
+</div></section>` : "";
 
-  const testimonialsList =
-    site.testimonials?.length
-      ? `<section class="card">
-  <h2>Testimonials</h2>
-  <div class="testis">
-    ${site.testimonials
-      .map(
-        (t) =>
-          `<blockquote><p>“${escapeHtml(t.quote)}”</p><footer>— ${escapeHtml(
-            t.name
-          )}</footer></blockquote>`
-      )
-      .join("")}
-  </div>
-</section>`
-      : "";
-
-  const hoursLoc =
-    site.hours?.length || site.address
-      ? `<section class="card">
-  <h2>Hours & Location</h2>
-  ${site.hours?.length ? `<ul class="list">${site.hours.map((h)=>`<li>${escapeHtml(h)}</li>`).join("")}</ul>` : ""}
-  ${site.address ? `<p class="address">${escapeHtml(site.address)}</p>` : ""}
-  ${
-    site.address
-      ? `<div class="mapWrap"><iframe title="Map" width="100%" height="280" loading="lazy" style="border:0;border-radius:12px"
-    src="https://www.google.com/maps?q=${encodeURIComponent(
-      site.address
-    )}&output=embed"></iframe></div>`
-      : ""
-  }
-</section>`
-      : "";
+  const hoursLoc = (site.hours||[]).length || site.address ? `
+<section class="card"><h2>Hours & Location</h2>
+${(site.hours||[]).length?`<ul class="list">${site.hours.map(h=>`<li>${escapeHtml(h)}</li>`).join("")}</ul>`:""}
+${site.address?`<p class="address">${escapeHtml(site.address)}</p>`:""}
+${site.address?`<div class="mapWrap"><iframe title="Map" width="100%" height="280" loading="lazy" style="border:0;border-radius:12px"
+src="https://www.google.com/maps?q=${encodeURIComponent(site.address)}&output=embed"></iframe></div>`:""}
+</section>`:"";
 
   const contactBits = [
-    site.email
-      ? `<a class="contact" href="mailto:${escapeHtml(site.email)}">Email: ${escapeHtml(
-          site.email
-        )}</a>`
-      : "",
-    site.phone ? `<span class="contact">Phone: ${escapeHtml(site.phone)}</span>` : "",
-    site.instagram
-      ? `<a class="contact" href="${escapeHtml(
-          site.instagram
-        )}" target="_blank" rel="noopener">Instagram</a>`
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+    site.email?`<a class="contact" href="mailto:${escapeHtml(site.email)}">Email: ${escapeHtml(site.email)}</a>`:"",
+    site.phone?`<span class="contact">Phone: ${escapeHtml(site.phone)}</span>`:"",
+    site.instagram?`<a class="contact" href="${escapeHtml(site.instagram)}" target="_blank" rel="noopener">Instagram</a>`:""
+  ].filter(Boolean).join(" ");
 
-  // Page CSS
   const css = `
 :root{ --brand:${brand}; --ink:#0f172a }
 *{ box-sizing:border-box } html,body{ height:100% }
@@ -318,74 +242,56 @@ blockquote{ margin:0; padding:14px; background:#ffffff15; border-left:4px solid 
 footer{ text-align:center; color:#e5e7eb; padding:24px 12px; text-shadow:0 2px 10px rgba(0,0,0,.4) }
 `;
 
-  // HTML
   return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 ${head}
 <style>${css}</style>
-</head>
-<body>
+</head><body>
 <div class="veil">
-<header>
-  ${logoBlock}
-  <h1>${escapeHtml(site.businessName)}</h1>
-</header>
-<main>
-  <section class="card hero">
-    <h2>About Us</h2>
-    <p>${escapeHtml(site.description || "")}</p>
-    <a class="cta" href="mailto:${escapeHtml(site.email || "hello@example.com")}">${escapeHtml(site.ctaText || "Contact Us")}</a>
-  </section>
-
-  ${servicesList}
-  ${testimonialsList}
-  ${galleryBlock}
-  ${hoursLoc}
-
-  <section class="card">
-    <h2>Contact</h2>
-    ${contactBits || "<p>Reach out any time.</p>"}
-  </section>
-</main>
-<footer>© ${new Date().getFullYear()} ${escapeHtml(site.businessName)}. All rights reserved.</footer>
+  <header>${logo}<h1>${escapeHtml(site.businessName)}</h1></header>
+  <main>
+    <section class="card hero">
+      <h2>About Us</h2>
+      <p>${escapeHtml(site.description || "")}</p>
+      <a class="cta" href="mailto:${escapeHtml(site.email || "hello@example.com")}">${escapeHtml(site.ctaText || "Contact Us")}</a>
+    </section>
+    ${services}
+    ${testis}
+    ${gallery}
+    ${hoursLoc}
+    <section class="card">
+      <h2>Contact</h2>
+      ${contactBits || "<p>Reach out any time.</p>"}
+    </section>
+  </main>
+  <footer>© ${new Date().getFullYear()} ${escapeHtml(site.businessName)}. All rights reserved.</footer>
 </div>
-</body>
-</html>`;
+</body></html>`;
 }
 
 /* ---------- Robots & Sitemap ---------- */
 function buildSitemap(site) {
   const base = (site.siteUrl || "https://example.com").replace(/\/+$/, "");
-  const urls = [`${base}/`];
   const now = new Date().toISOString();
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  ${urls
-    .map(
-      (u) =>
-        `<url><loc>${u}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
-    )
-    .join("\n  ")}
+  <url><loc>${base}/</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>`;
 }
-
-function buildRobots(site) {
-  const allowIndex = site.plan === "business" && !!site.allowIndexing;
+function buildRobots(site){
+  const allow = site.plan === "business" && !!site.allowIndexing;
   const base = (site.siteUrl || "").replace(/\/+$/, "");
-  const sitemapLine = base ? `Sitemap: ${base}/sitemap.xml` : "";
-  return `${allowIndex ? "User-agent: *\nAllow: /" : "User-agent: *\nDisallow: /"}
-${sitemapLine}`;
+  const sitemap = base ? `Sitemap: ${base}/sitemap.xml` : "";
+  return `${allow ? "User-agent: *\nAllow: /" : "User-agent: *\nDisallow: /"}\n${sitemap}`;
 }
 
-/* ---------- Collect Form → Site Object ---------- */
-async function collectSiteData() {
-  // Plan
-  const plan = currentPlan();
+/* ---------- Collect data ---------- */
+function splitLines(t){return (t||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean)}
+function splitTestimonials(t){return splitLines(t).map(row=>{const [name,quote]=(row||"").split("|").map(s=>s.trim());if(!name||!quote)return null;return {name,quote};}).filter(Boolean)}
 
-  // Core
+async function collectSiteData(){
+  const plan = currentPlan();
   const businessName = val("businessName");
   const description = val("businessDescription");
   const email = val("email");
@@ -393,45 +299,34 @@ async function collectSiteData() {
   const instagram = val("instagram");
   const ctaText = val("ctaText");
 
-  // Logo
   let logoDataURL = "";
-  const logoFile = $("logo")?.files?.[0];
-  if (logoFile) logoDataURL = await fileToDataURL(logoFile);
+  if ($("logo")?.files?.[0]) logoDataURL = await fileToDataURL($("logo").files[0]);
 
-  // Gallery (limit 8 for speed; skip huge files > ~1.8MB)
   const galleryDataURLs = [];
-  const galleryFiles = $("gallery")?.files ? Array.from($("gallery").files) : [];
-  for (const f of galleryFiles.slice(0, 8)) {
-    if (f.size <= 1.8 * 1024 * 1024) {
-      galleryDataURLs.push(await fileToDataURL(f));
-    }
+  const galFiles = $("gallery")?.files ? Array.from($("gallery").files) : [];
+  for (const f of galFiles.slice(0, 8)) {
+    if (f.size <= 1.8*1024*1024) galleryDataURLs.push(await fileToDataURL(f));
   }
 
-  // Background
   const bgType = $("bgType")?.value || "default";
   let bgImage = "";
-  if (bgType === "image-upload") {
-    const f = $("bgUpload")?.files?.[0];
-    if (f) bgImage = await fileToDataURL(f);
-  } else if (bgType === "image-url") {
-    bgImage = val("bgUrl");
-  }
+  if (bgType === "image-upload" && $("bgUpload")?.files?.[0]) bgImage = await fileToDataURL($("bgUpload").files[0]);
+  else if (bgType === "image-url") bgImage = val("bgUrl");
   const overlayPct = parseInt($("bgOverlay")?.value || "55", 10);
+
   const bg = {
     type: bgType,
     image: bgImage,
     color1: $("bgColor1")?.value || "#0ea5e9",
     color2: $("bgColor2")?.value || "#2563eb",
     solid: $("bgSolid")?.value || "#0b1221",
-    overlay: isNaN(overlayPct) ? 0.55 : Math.max(0, Math.min(0.9, overlayPct / 100)),
+    overlay: isNaN(overlayPct) ? 0.55 : Math.max(0, Math.min(0.9, overlayPct/100)),
   };
 
-  // Palette / Brand
   const palette = $("palette")?.value || "blue";
   const brandColor = $("brandColor")?.value || "";
   const colors = paletteToColors(palette, brandColor);
 
-  // Pro
   const isPro = plan === "pro" || plan === "business";
   const services = isPro ? splitLines(val("services")) : [];
   const testimonials = isPro ? splitTestimonials(val("testimonials")) : [];
@@ -439,7 +334,6 @@ async function collectSiteData() {
   const address = isPro ? val("address") : "";
   const formspree = isPro ? val("formspree") : "";
 
-  // Business (SEO)
   const isBiz = plan === "business";
   const seoTitle = isBiz ? val("seoTitle") : "";
   const seoDescription = isBiz ? val("seoDescription") : "";
@@ -450,91 +344,56 @@ async function collectSiteData() {
   const template = isBiz ? $("template")?.value || "classic" : "classic";
 
   return {
-    plan,
-    businessName,
-    description,
-    email,
-    phone,
-    instagram,
-    ctaText,
-    logoDataURL,
-    galleryDataURLs,
-    bg,
-    colors,
-    services,
-    testimonials,
-    hours,
-    address,
-    formspree,
-    // business
-    template,
-    seoTitle,
-    seoDescription,
-    gaId,
-    allowIndexing,
-    siteUrl,
-    gscToken,
+    plan,businessName,description,email,phone,instagram,ctaText,
+    logoDataURL,galleryDataURLs,bg,colors,services,testimonials,hours,address,formspree,
+    template,seoTitle,seoDescription,gaId,allowIndexing,siteUrl,gscToken
   };
 }
 
-function splitLines(text) {
-  return (text || "")
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-function splitTestimonials(text) {
-  return splitLines(text).map((row) => {
-    const [name, quote] = row.split("|").map((s) => (s || "").trim());
-    if (!name || !quote) return null;
-    return { name, quote };
-  }).filter(Boolean);
-}
-
-/* ---------- Preview + ZIP ---------- */
-async function handleGenerate(e) {
+/* ---------- Generate + preview + zip ---------- */
+async function handleGenerate(e){
   e.preventDefault();
-
   const site = await collectSiteData();
-
-  // Build HTML
   const html = buildPageHTML(site);
 
-  // Live preview
   const iframe = $("preview");
   if (iframe) iframe.srcdoc = html;
 
-  // Build ZIP (index.html + robots.txt + sitemap.xml)
-  if (window.JSZip) {
+  if (window.JSZip){
     const zip = new JSZip();
     zip.file("index.html", html);
     zip.file("robots.txt", buildRobots(site));
     zip.file("sitemap.xml", buildSitemap(site));
-
-    const blob = await zip.generateAsync({ type: "blob" });
+    const blob = await zip.generateAsync({type:"blob"});
     const link = $("downloadLink");
-    if (link) {
+    if (PAID) {
       link.href = URL.createObjectURL(blob);
       link.download = "website.zip";
+      link.classList.remove("hide");
       link.style.display = "inline-block";
+    } else {
+      // keep hidden until paid; still generate so it's instant after unlock
+      link.classList.add("hide");
+      link.style.display = "none";
+      link.href = URL.createObjectURL(blob); // prepared for when paid flips true
+      link.download = "website.zip";
     }
   } else {
-    alert("JSZip not loaded — cannot prepare download.");
+    alert("JSZip not loaded — cannot build ZIP.");
   }
 }
 
 /* ---------- Init ---------- */
-document.addEventListener("DOMContentLoaded", () => {
-  // Plan gating
+document.addEventListener("DOMContentLoaded", async () => {
   applyPlanLocks();
-  document.getElementById("planForm")?.addEventListener("change", (e) => {
-    if (e.target?.name === "plan") applyPlanLocks();
-  });
+  $("planForm")?.addEventListener("change", (e)=>{ if (e.target?.name==="plan") applyPlanLocks(); });
 
-  // Background UI
   updateBgUI();
   $("bgType")?.addEventListener("change", updateBgUI);
 
-  // Form submit -> preview + zip
   $("siteForm")?.addEventListener("submit", handleGenerate);
+  $("buyBtn")?.addEventListener("click", startCheckout);
+
+  await verifyFromURL();
+  updateDownloadUI();
 });
