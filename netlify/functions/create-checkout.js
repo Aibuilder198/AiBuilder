@@ -1,5 +1,8 @@
 // /netlify/functions/create-checkout.js
-const Stripe = require("stripe");
+// Creates a Stripe Checkout Session for either one-time payment or subscription.
+// Requires env: STRIPE_SECRET_KEY (and optionally SITE_URL for success/cancel)
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -7,44 +10,54 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { plan, successUrl } = JSON.parse(event.body || "{}");
+    const { priceId, meta, success_url, cancel_url } = JSON.parse(event.body || "{}");
 
-    // Map plan -> price + mode
-    const priceMap = {
-      basic: { price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", mode: "payment" },
-      pro: { price: "price_1SDbHKAmJkffDNdtYP9sVw1T", mode: "subscription" },
-      business: { price: "price_1SDbI1AmJkffDNdtjiqSI7qF", mode: "subscription" },
-    };
+    if (!priceId) {
+      return { statusCode: 400, body: "Missing priceId" };
+    }
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return { statusCode: 500, body: "Missing STRIPE_SECRET_KEY env var" };
+    }
 
-    const conf = priceMap[(plan || "basic").toLowerCase()] || priceMap.basic;
+    // Get price so we can pick correct mode
+    const price = await stripe.prices.retrieve(priceId);
+    if (!price || !price.active) {
+      return { statusCode: 400, body: "Invalid or inactive price" };
+    }
+    const mode = price.recurring ? "subscription" : "payment";
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    // Clamp metadata to avoid Stripe's 500-char limit
+    const safeMeta = {};
+    if (meta && typeof meta === "string") {
+      safeMeta.client_meta = meta.slice(0, 450);
+    }
 
     // Build success/cancel URLs
-    // success: redirect back with the session_id for verification
-    const success_url = (successUrl || process.env.SITE_URL || "https://example.com") +
-      "?session_id={CHECKOUT_SESSION_ID}";
-    const cancel_url = (process.env.SITE_URL || successUrl || "https://example.com");
+    const origin =
+      process.env.SITE_URL ||
+      `https://${process.env.URL || event.headers.host || ""}`;
+    const successURL = success_url || `${origin}/success.html`;
+    const cancelURL = cancel_url || `${origin}/`;
 
     const session = await stripe.checkout.sessions.create({
-      mode: conf.mode,
-      line_items: [{ price: conf.price, quantity: 1 }],
-      success_url,
-      cancel_url,
-      // (Optional) collect email
-      customer_creation: "if_required",
+      mode,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successURL + "?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: cancelURL,
+      metadata: safeMeta,
+      allow_promotion_codes: true,
     });
 
     return {
       statusCode: 200,
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: session.url }),
     };
   } catch (err) {
+    console.error("checkout error", err);
     return {
       statusCode: 500,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ error: err.message }),
+      body: `Checkout create failed: ${err.message}`,
     };
   }
 };
