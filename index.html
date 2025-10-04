@@ -74,7 +74,7 @@
     .plan{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(99,102,241,.25);color:#fff;font-weight:800;border:1px solid rgba(255,255,255,.25)}
     .hint{font-size:13px;color:#bac6ff}
-    .hide{display:none}
+    .hide{display:none !important}
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
 
     /* ===== PRICING MODAL (hidden by default) ===== */
@@ -83,7 +83,7 @@
     .pricing-backdrop{
       position:fixed; inset:0;
       z-index: 100000;
-      display:none;               /* hidden until opened */
+      display:none;
       background:rgba(2,8,23,.6);
       backdrop-filter: blur(4px);
     }
@@ -92,7 +92,7 @@
     .pricing-modal{
       position:fixed; inset:0;
       z-index: 100001;
-      display:none;               /* hidden until opened */
+      display:none;
       place-items:center;
       pointer-events:none;
     }
@@ -237,7 +237,8 @@
             <option value="solid">Solid Color</option>
           </select>
 
-          <div class="row" id="bgUploadRow" class="hide">
+          <!-- FIXED: both 'row' and 'hide' classes present -->
+          <div class="row hide" id="bgUploadRow">
             <div>
               <label for="bgUpload">Upload Background Image</label>
               <input id="bgUpload" type="file" accept="image/*" />
@@ -254,7 +255,8 @@
             <input id="bgUrl" type="url" placeholder="https://example.com/background.jpg" />
           </div>
 
-          <div class="row" id="bgGradientRow" class="hide">
+          <!-- FIXED: use .row + .hide for consistent layout -->
+          <div class="row hide" id="bgGradientRow">
             <div>
               <label for="bgColor1">Color 1</label>
               <input id="bgColor1" type="color" value="#0ea5e9" />
