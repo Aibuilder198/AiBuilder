@@ -1,6 +1,5 @@
 // /netlify/functions/create-checkout.js
-// Creates a Stripe Checkout Session for either one-time payment or subscription.
-// Requires env: STRIPE_SECRET_KEY (and optionally SITE_URL for success/cancel)
+// Requires env: STRIPE_SECRET_KEY (and optionally SITE_URL for redirects)
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -11,53 +10,50 @@ exports.handler = async (event) => {
 
   try {
     const { priceId, meta, success_url, cancel_url } = JSON.parse(event.body || "{}");
-
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return { statusCode: 500, body: "Missing STRIPE_SECRET_KEY" };
+    }
     if (!priceId) {
       return { statusCode: 400, body: "Missing priceId" };
     }
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return { statusCode: 500, body: "Missing STRIPE_SECRET_KEY env var" };
-    }
 
-    // Get price so we can pick correct mode
+    // Look up price to decide mode (payment vs subscription)
     const price = await stripe.prices.retrieve(priceId);
     if (!price || !price.active) {
       return { statusCode: 400, body: "Invalid or inactive price" };
     }
     const mode = price.recurring ? "subscription" : "payment";
 
-    // Clamp metadata to avoid Stripe's 500-char limit
+    // Safe, short metadata to avoid 500-char limit
     const safeMeta = {};
     if (meta && typeof meta === "string") {
       safeMeta.client_meta = meta.slice(0, 450);
     }
 
-    // Build success/cancel URLs
+    // Build redirect URLs
     const origin =
       process.env.SITE_URL ||
       `https://${process.env.URL || event.headers.host || ""}`;
-    const successURL = success_url || `${origin}/success.html`;
+    const successURL = (success_url || `${origin}/success.html`) + "?session_id={CHECKOUT_SESSION_ID}";
     const cancelURL = cancel_url || `${origin}/`;
 
     const session = await stripe.checkout.sessions.create({
       mode,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successURL + "?session_id={CHECKOUT_SESSION_ID}",
+      success_url: successURL,
       cancel_url: cancelURL,
       metadata: safeMeta,
-      allow_promotion_codes: true,
+      allow_promotion_codes: true
     });
 
+    // Return the session ID (for redirectToCheckout)
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: session.url }),
+      body: JSON.stringify({ id: session.id })
     };
   } catch (err) {
-    console.error("checkout error", err);
-    return {
-      statusCode: 500,
-      body: `Checkout create failed: ${err.message}`,
-    };
+    console.error("create-checkout error:", err);
+    return { statusCode: 500, body: `Checkout create failed: ${err.message}` };
   }
 };
