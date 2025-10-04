@@ -1,17 +1,12 @@
 {
   "name": "ai-website-builder",
+  "private": true,
   "version": "1.0.0",
-  "description": "AI-powered business website builder with Stripe checkout, OpenAI integration, and email support",
-  "main": "index.js",
+  "description": "Static AI website builder with Netlify Functions for Stripe checkout",
   "scripts": {
-    "start": "netlify dev",
-    "build": "echo 'No build step required' && exit 0"
+    "build": "echo \"static site\" && exit 0"
   },
   "dependencies": {
-    "stripe": "^14.0.0",
-    "nodemailer": "^6.9.8",
-    "openai": "^4.0.0",
-    "resend": "^2.0.0"
-  },
-  "devDependencies": {}
+    "stripe": "^16.0.0"
+  }
 }
