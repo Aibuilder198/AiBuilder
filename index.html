@@ -4,275 +4,160 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AI Website Builder</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg: #0b1221;
-      --panel: rgba(255,255,255,0.06);
-      --border: rgba(255,255,255,0.16);
-      --text: #e5e7eb;
-      --muted: #a1a1aa;
-      --accent: #2563eb;
-      --accent-2: #16a34a;
-      --danger: #ef4444;
-      --radius: 14px;
+    :root{
+      --bg1:#0f172a; --bg2:#1f2937; --panel:#0b1220cc; --card:#111827cc;
+      --ink:#e5e7eb; --muted:#9ca3af; --primary:#2563eb; --primary-2:#1d4ed8; --line:#243148;
+      --ok:#10b981; --warn:#f59e0b;
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      margin:0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(60% 120% at 100% 0%, #1a144a 0%, #0b1221 60%),
-        radial-gradient(60% 120% at 0% 100%, #2b103d 0%, #0b1221 60%);
-      min-height:100vh;
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+      background: radial-gradient(1200px 1200px at 10% -10%, #1b2949, transparent 50%),
+                  radial-gradient(900px 900px at 90% 10%, #1a2137, transparent 40%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
     }
-    .wrap{max-width:1160px;margin:32px auto;padding:0 16px}
-    h1{font-weight:800;letter-spacing:.2px;margin:0 0 16px}
-    .hint{color:var(--muted);margin-bottom:24px}
-    .grid{display:grid;gap:16px;grid-template-columns: 1.1fr .9fr}
-    .card{
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:16px 16px 20px;
-      backdrop-filter: blur(8px);
+    .wrap{max-width:1120px;margin:32px auto;padding:0 16px}
+    .hero{margin-bottom:18px}
+    .hero h1{margin:0 0 8px;font-weight:800;font-size:clamp(26px,3.5vw,40px)}
+    .hero p{margin:0;color:var(--muted)}
+    .grid{display:grid;gap:18px}
+    @media (min-width: 960px){ .grid{grid-template-columns: 1fr 1fr} }
+
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+    .panel .hd{padding:18px 18px 8px;border-bottom:1px solid var(--line)}
+    .panel .hd h2{margin:0;font-size:18px;font-weight:800}
+    .panel .bd{padding:18px}
+
+    .row{display:flex;gap:8px;align-items:center}
+    .muted{color:var(--muted);font-size:14px}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#0a1220}
+    .pill input{accent-color:var(--primary)}
+
+    .btn{
+      appearance:none;border:0;border-radius:12px;padding:12px 16px;
+      background:var(--primary);color:#fff;font-weight:800;cursor:pointer;
+      transition:transform .02s ease, filter .15s ease;
     }
-    .card h2{margin:6px 0 12px;font-weight:800}
-    label{display:block;font-size:14px;color:#c7c9d3;margin:10px 0 6px}
-    input[type="text"], input[type="url"], input[type="email"], input[type="tel"], textarea, select {
-      width:100%;
-      background:rgba(255,255,255,0.06);
-      border:1px solid var(--border);
-      color:var(--text);
-      border-radius:12px;
-      padding:12px;
-      outline:none;
+    .btn:hover{filter:brightness(1.05)}
+    .btn:active{transform:translateY(1px)}
+    .btn.outline{background:transparent;border:1px solid var(--line);color:var(--ink)}
+    .btn.success{background:var(--ok)}
+    .btn.warn{background:var(--warn);color:#111}
+
+    .field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+    .field label{font-weight:700}
+    .field input[type="text"], .field textarea{
+      width:100%;border:1px solid var(--line);background:#0a1220;color:var(--ink);
+      padding:12px;border-radius:12px;outline:none
     }
-    textarea{min-height:120px;resize:vertical}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .btnBar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
-    .primary{background:var(--accent);color:#fff}
-    .secondary{background:#334155;color:#e5e7eb}
-    .success{background:var(--accent-2);color:#fff}
-    .danger{background:var(--danger);color:#fff}
-    .muted{color:var(--muted)}
-    .locked{opacity:.5; pointer-events:none}
-    iframe.preview{width:100%;height:720px;border:0;border-radius:12px;background:#fff}
-    .sectionTitle{margin-top:20px;margin-bottom:8px;font-weight:800}
-    .twoCol{display:grid;gap:12px;grid-template-columns:1fr 1fr}
-    .small{font-size:12px;color:var(--muted)}
-    .pill{padding:6px 10px;border-radius:999px;background:#334155;color:#fff;font-weight:800}
-    .radioRow {display:flex;gap:16px;align-items:center; flex-wrap:wrap}
-    .planDetails{color:#a5b4fc; cursor:pointer; text-decoration:underline}
-    .logoGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}
-    .logoCard{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;padding:10px}
-    .logoCard .btn{margin-top:8px;background:#334155;color:#e5e7eb;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer;border:0}
+    .field textarea{min-height:120px;resize:vertical}
+    .hint{font-size:12px;color:var(--muted)}
+    .stack{display:flex;gap:10px;flex-wrap:wrap}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+    .preview h3{margin:0 0 8px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:10px;border:1px solid var(--line);font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Create a Simple Business Website powered by AI <span class="pill">Preview for free</span></h1>
-    <div class="hint">Preview is free. Complete payment to unlock the download.</div>
 
-    <!-- Plan selector -->
-    <div class="card">
-      <h2>Choose a Plan <span id="activePlanPill" class="pill">Basic</span></h2>
-      <div class="radioRow">
-        <label><input type="radio" name="plan" value="basic" checked> Basic ($20 one-time)</label>
-        <label><input type="radio" name="plan" value="pro"> Pro ($29/mo)</label>
-        <label><input type="radio" name="plan" value="business"> Business ($79/mo)</label>
-        <span id="viewPlan" class="planDetails">View plan details</span>
-      </div>
-      <div class="small">
-        <strong>Basic</strong>: single page (+logo, up to a few images).
-        <strong>Pro</strong>: adds Services, Testimonials, Hours/Location, Contact form.
-        <strong>Business</strong>: adds Themes, Palette, Custom Brand Color, SEO, Analytics.
-      </div>
-      <div class="btnBar" style="margin-top:8px">
-        <button id="buyBtn" class="success" type="button">Buy & Unlock</button>
-        <span class="small" id="buyHelp">You’ll be redirected to Stripe checkout.</span>
-      </div>
+    <div class="hero">
+      <h1>Create a Simple Business Website powered by AI</h1>
+      <p>Preview is free. <span class="badge">Download unlocks after payment</span></p>
     </div>
 
-    <div class="grid" style="margin-top:16px">
-      <!-- Left: form -->
-      <div class="card">
-        <h2>Content</h2>
-
-        <label for="businessName">Business Name</label>
-        <input id="businessName" type="text" placeholder="e.g., Pristine Green" />
-
-        <label for="description">Business Description</label>
-        <textarea id="description" placeholder="What do you do?"></textarea>
-
-        <div class="row">
-          <div>
-            <label for="logo">Upload Logo</label>
-            <input id="logo" type="file" accept="image/*" />
-          </div>
-          <div>
-            <label for="gallery">Gallery Images (up to 12)</label>
-            <input id="gallery" type="file" accept="image/*" multiple />
-            <div class="small">Basic preview uses ~6 images for speed.</div>
-          </div>
+    <!-- PRICING / PLAN -->
+    <section class="panel">
+      <div class="hd"><h2>Choose a Plan</h2></div>
+      <div class="bd">
+        <div class="stack">
+          <label class="pill">
+            <input type="radio" name="plan" value="basic_one_time" checked>
+            <strong>Basic</strong> — $20 one-time
+          </label>
+          <label class="pill">
+            <input type="radio" name="plan" value="pro_monthly">
+            <strong>Pro</strong> — $29/mo
+          </label>
+          <label class="pill">
+            <input type="radio" name="plan" value="biz_monthly">
+            <strong>Business</strong> — $79/mo
+          </label>
         </div>
-
-        <div class="row">
-          <div>
-            <label for="email">Contact Email</label>
-            <input id="email" type="email" placeholder="hello@example.com" />
-          </div>
-          <div>
-            <label for="phone">Phone</label>
-            <input id="phone" type="tel" placeholder="(555) 123-4567" />
-          </div>
+        <p class="muted" style="margin-top:10px">
+          <strong>Basic</strong>: single page (+logo, a few images).
+          <strong>Pro</strong>: adds Services, Testimonials, Hours/Location, Contact form.
+          <strong>Business</strong>: adds Themes, Palette, Custom Brand Color, SEO, Analytics.
+        </p>
+        <div class="actions">
+          <button id="buyBtn" class="btn">Buy & Unlock</button>
+          <button id="previewBtn" class="btn outline">Generate Website (Preview)</button>
+          <button id="downloadBtn" class="btn success">Download ZIP</button>
         </div>
-
-        <div class="row">
-          <div>
-            <label for="instagram">Instagram URL</label>
-            <input id="instagram" type="url" placeholder="https://instagram.com/yourhandle" />
-          </div>
-          <div>
-            <label for="ctaText">CTA Button Text</label>
-            <input id="ctaText" type="text" placeholder="Contact Us" />
-          </div>
-        </div>
-
-        <!-- Pro features -->
-        <div id="proFields">
-          <h3 class="sectionTitle">Pro Sections</h3>
-          <div class="twoCol">
-            <div>
-              <label for="services">Services (one per line)</label>
-              <textarea id="services" placeholder="Lawn care&#10;Trimming"></textarea>
-            </div>
-            <div>
-              <label for="testimonials">Testimonials (Name | Quote, one per line)</label>
-              <textarea id="testimonials" placeholder="Jane | Great service!&#10;Mike | Fast and professional!"></textarea>
-            </div>
-          </div>
-          <div class="twoCol">
-            <div>
-              <label for="hours">Hours / Location</label>
-              <textarea id="hours" placeholder="Mon–Fri: 9am–5pm&#10;123 Main St, City"></textarea>
-            </div>
-            <div>
-              <label for="contactForm">Contact Form Destination Email</label>
-              <input id="contactForm" type="email" placeholder="forms@yourdomain.com" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Business features -->
-        <div id="businessFields">
-          <h3 class="sectionTitle">Brand & Theme (Business plan)</h3>
-          <div class="twoCol">
-            <div>
-              <label for="theme">Theme</label>
-              <select id="theme">
-                <option value="classic" selected>Classic</option>
-                <option value="dark">Dark</option>
-                <option value="clean">Clean</option>
-              </select>
-            </div>
-            <div>
-              <label for="brandColor">Brand Color (hex)</label>
-              <input id="brandColor" type="text" placeholder="#2563eb" />
-            </div>
-          </div>
-
-          <div class="twoCol">
-            <div>
-              <label for="backgroundType">Background</label>
-              <select id="backgroundType">
-                <option value="gradient">Curated gradient</option>
-                <option value="image">Upload image</option>
-                <option value="solid">Solid color</option>
-              </select>
-            </div>
-            <div id="bgUploadCol" style="display:none">
-              <label for="backgroundImage">Upload Background Image</label>
-              <input id="backgroundImage" type="file" accept="image/*" />
-            </div>
-          </div>
-
-          <h3 class="sectionTitle">SEO & Analytics</h3>
-          <label for="seoTitle">SEO Title</label>
-          <input id="seoTitle" type="text" placeholder="Business name or keyword phrase" />
-
-          <label for="seoDesc">SEO Description</label>
-          <textarea id="seoDesc" placeholder="One or two compelling sentences for search engines."></textarea>
-
-          <div class="twoCol">
-            <div>
-              <label for="gaId">Google Analytics ID</label>
-              <input id="gaId" type="text" placeholder="G-XXXXXXXXXX" />
-            </div>
-            <div>
-              <label for="canonicalUrl">Canonical Site URL</label>
-              <input id="canonicalUrl" type="url" placeholder="https://yourdomain.com" />
-            </div>
-          </div>
-
-          <label><input id="allowIndexing" type="checkbox" checked /> Allow search engines to index this site</label>
-
-          <label for="gscToken">Google Search Console token</label>
-          <input id="gscToken" type="text" placeholder="Search Console HTML verification token (optional)" />
-        </div>
-
-        <!-- AI Logo Maker -->
-        <h2 class="sectionTitle">AI Logo Maker</h2>
-        <div class="row">
-          <div>
-            <label for="logoName">Brand / Business Name</label>
-            <input id="logoName" type="text" placeholder="e.g., Pristine Green" />
-          </div>
-          <div>
-            <label for="logoSlogan">Slogan (optional)</label>
-            <input id="logoSlogan" type="text" placeholder="We mow for the low" />
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label for="logoIndustry">Industry</label>
-            <input id="logoIndustry" type="text" placeholder="lawn care, cleaning, cafe, tech" />
-          </div>
-          <div>
-            <label for="logoStyle">Style</label>
-            <select id="logoStyle">
-              <option value="modern" selected>Modern</option>
-              <option value="bold">Bold</option>
-              <option value="friendly">Friendly</option>
-              <option value="elegant">Elegant</option>
-            </select>
-          </div>
-        </div>
-        <label for="logoCustomColors">Custom Colors (optional, 2–4 hex values comma-separated)</label>
-        <input id="logoCustomColors" type="text" placeholder="#2563eb, #f59e0b, #0b1221, #f8fafc" />
-        <div class="btnBar">
-          <button id="genLogoBtn" type="button" class="secondary">Generate Logos</button>
-        </div>
-        <div id="logoResults" class="logoGrid"></div>
-
-        <div class="btnBar" style="margin-top:18px">
-          <button id="previewBtn" class="primary" type="button">Generate Website (Preview)</button>
-          <button id="downloadBtn" class="success locked" type="button" title="Complete payment to unlock">Download ZIP</button>
-        </div>
-        <div class="small" id="gateHelp">Download unlocks after payment (success page verification).</div>
       </div>
+    </section>
 
-      <!-- Right: live preview -->
-      <div class="card">
-        <h2>Live Preview</h2>
-        <iframe id="previewFrame" class="preview"></iframe>
-      </div>
+    <!-- CONTENT + PREVIEW -->
+    <div class="grid">
+      <!-- CONTENT -->
+      <section class="panel">
+        <div class="hd"><h2>Content</h2></div>
+        <div class="bd">
+          <div class="field">
+            <label for="businessName">Business Name</label>
+            <input id="businessName" type="text" placeholder="e.g., Pristine Green">
+          </div>
+
+          <div class="field">
+            <label for="businessDesc">Business Description</label>
+            <textarea id="businessDesc" placeholder="What do you do?"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="services">Services (one per line)</label>
+            <textarea id="services" placeholder="Lawn care&#10;Tree trimming"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="testimonials">Testimonials (Name | Quote per line)</label>
+            <textarea id="testimonials" placeholder="Alex | These folks are amazing!"></textarea>
+            <div class="hint">Use the format: <code>Name | Quote</code> per line.</div>
+          </div>
+
+          <div class="field">
+            <label for="seoTitle">SEO Title</label>
+            <input id="seoTitle" type="text" placeholder="e.g., Rizo Hats – Premium Hats">
+          </div>
+
+          <div class="field">
+            <label for="seoDesc">SEO Description</label>
+            <textarea id="seoDesc" placeholder="Short summary for search results."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- PREVIEW -->
+      <section class="panel">
+        <div class="hd"><h2>Live Preview</h2></div>
+        <div class="bd">
+          <div id="preview" class="card preview">
+            <h3>Your website will preview here</h3>
+            <p class="muted">Fill the form and click <strong>Generate Website (Preview)</strong>.</p>
+          </div>
+        </div>
+      </section>
     </div>
+
   </div>
 
+  <!-- Load builder logic -->
   <script src="builder.js"></script>
 </body>
 </html>
