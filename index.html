@@ -5,98 +5,70 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AI Website Builder</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
   <style>
     :root{
       --bg1:#0f172a; --bg2:#1f2937; --panel:#0b1220cc; --card:#111827cc;
-      --ink:#e5e7eb; --muted:#9ca3af; --primary:#2563eb; --primary-2:#1d4ed8; --line:#243148;
-      --ok:#10b981; --warn:#f59e0b;
+      --ink:#e5e7eb; --muted:#9ca3af; --primary:#2563eb; --line:#243148; --ok:#10b981;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    *{box-sizing:border-box} html,body{height:100%}
     body{
       margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
-      background: radial-gradient(1200px 1200px at 10% -10%, #1b2949, transparent 50%),
-                  radial-gradient(900px 900px at 90% 10%, #1a2137, transparent 40%),
+      background: radial-gradient(1100px 1100px at 5% -5%, #1a2450, transparent 50%),
+                  radial-gradient(800px 800px at 95% 10%, #18203f, transparent 40%),
                   linear-gradient(180deg, var(--bg1), var(--bg2));
       background-attachment: fixed;
     }
     .wrap{max-width:1120px;margin:32px auto;padding:0 16px}
-    .hero{margin-bottom:18px}
     .hero h1{margin:0 0 8px;font-weight:800;font-size:clamp(26px,3.5vw,40px)}
     .hero p{margin:0;color:var(--muted)}
-    .grid{display:grid;gap:18px}
-    @media (min-width: 960px){ .grid{grid-template-columns: 1fr 1fr} }
-
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin:18px 0}
     .panel .hd{padding:18px 18px 8px;border-bottom:1px solid var(--line)}
     .panel .hd h2{margin:0;font-size:18px;font-weight:800}
     .panel .bd{padding:18px}
-
-    .row{display:flex;gap:8px;align-items:center}
-    .muted{color:var(--muted);font-size:14px}
-    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#0a1220}
-    .pill input{accent-color:var(--primary)}
-
-    .btn{
-      appearance:none;border:0;border-radius:12px;padding:12px 16px;
-      background:var(--primary);color:#fff;font-weight:800;cursor:pointer;
-      transition:transform .02s ease, filter .15s ease;
-    }
-    .btn:hover{filter:brightness(1.05)}
-    .btn:active{transform:translateY(1px)}
-    .btn.outline{background:transparent;border:1px solid var(--line);color:var(--ink)}
-    .btn.success{background:var(--ok)}
-    .btn.warn{background:var(--warn);color:#111}
-
     .field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
     .field label{font-weight:700}
-    .field input[type="text"], .field textarea{
+    .field input[type="text"], .field input[type="color"], .field textarea, .field select{
       width:100%;border:1px solid var(--line);background:#0a1220;color:var(--ink);
       padding:12px;border-radius:12px;outline:none
     }
-    .field textarea{min-height:120px;resize:vertical}
-    .hint{font-size:12px;color:var(--muted)}
     .stack{display:flex;gap:10px;flex-wrap:wrap}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:#0a1220}
+    .pill input{accent-color:#2563eb}
+    .btn{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}
+    .btn.outline{background:transparent;border:1px solid var(--line);color:var(--ink)}
+    .btn.success{background:var(--ok)}
+    .muted{color:var(--muted);font-size:14px}
+    .grid{display:grid;gap:18px}
+    @media(min-width:960px){.grid{grid-template-columns:1fr 1fr}}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
-    .preview h3{margin:0 0 8px}
+    .preview-wrap{min-height:260px}
+    .brand-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+    .brand-row img{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#0a1220;border:1px solid var(--line)}
+    .hint{font-size:12px;color:var(--muted)}
     .badge{display:inline-block;padding:4px 8px;border-radius:10px;border:1px solid var(--line);font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
   <div class="wrap">
-
     <div class="hero">
       <h1>Create a Simple Business Website powered by AI</h1>
       <p>Preview is free. <span class="badge">Download unlocks after payment</span></p>
     </div>
 
-    <!-- PRICING / PLAN -->
+    <!-- PLANS -->
     <section class="panel">
       <div class="hd"><h2>Choose a Plan</h2></div>
       <div class="bd">
         <div class="stack">
-          <label class="pill">
-            <input type="radio" name="plan" value="basic_one_time" checked>
-            <strong>Basic</strong> — $20 one-time
-          </label>
-          <label class="pill">
-            <input type="radio" name="plan" value="pro_monthly">
-            <strong>Pro</strong> — $29/mo
-          </label>
-          <label class="pill">
-            <input type="radio" name="plan" value="biz_monthly">
-            <strong>Business</strong> — $79/mo
-          </label>
+          <label class="pill"><input type="radio" name="plan" value="basic_one_time" checked> <strong>Basic</strong> — $20 one-time</label>
+          <label class="pill"><input type="radio" name="plan" value="pro_monthly"> <strong>Pro</strong> — $29/mo</label>
+          <label class="pill"><input type="radio" name="plan" value="biz_monthly"> <strong>Business</strong> — $79/mo</label>
         </div>
         <p class="muted" style="margin-top:10px">
-          <strong>Basic</strong>: single page (+logo, a few images).
-          <strong>Pro</strong>: adds Services, Testimonials, Hours/Location, Contact form.
-          <strong>Business</strong>: adds Themes, Palette, Custom Brand Color, SEO, Analytics.
+          <strong>Basic</strong>: logo + short page. <strong>Pro</strong>: Services, Testimonials, Hours/Location, Contact form.
+          <strong>Business</strong>: Themes, Palette, Custom Brand Color, Background, SEO, Analytics.
         </p>
-        <div class="actions">
+        <div class="stack" style="margin-top:10px">
           <button id="buyBtn" class="btn">Buy & Unlock</button>
           <button id="previewBtn" class="btn outline">Generate Website (Preview)</button>
           <button id="downloadBtn" class="btn success">Download ZIP</button>
@@ -104,60 +76,122 @@
       </div>
     </section>
 
-    <!-- CONTENT + PREVIEW -->
-    <div class="grid">
-      <!-- CONTENT -->
-      <section class="panel">
-        <div class="hd"><h2>Content</h2></div>
-        <div class="bd">
-          <div class="field">
-            <label for="businessName">Business Name</label>
-            <input id="businessName" type="text" placeholder="e.g., Pristine Green">
+    <!-- BRANDING & THEME (Business plan unlocks everything) -->
+    <section class="panel" id="brandingPanel">
+      <div class="hd"><h2>Branding & Theme</h2></div>
+      <div class="bd">
+        <div class="grid">
+          <div>
+            <div class="field">
+              <label for="theme">Theme (Business plan)</label>
+              <select id="theme">
+                <option value="classic">Classic</option>
+                <option value="modern">Modern</option>
+                <option value="bold">Bold</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="palette">Palette (Business plan)</label>
+              <select id="palette">
+                <option value="blue">Blue</option>
+                <option value="emerald">Emerald</option>
+                <option value="amber">Amber</option>
+                <option value="rose">Rose</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="brandColor">Custom Brand Color (Business plan)</label>
+              <input id="brandColor" type="color" value="#2563eb">
+            </div>
+            <div class="field">
+              <label for="bgType">Background</label>
+              <select id="bgType">
+                <option value="gradient">Gradient</option>
+                <option value="image">Upload image</option>
+              </select>
+            </div>
+            <div class="field" id="bgUploadRow" style="display:none">
+              <label for="bgImage">Background image (JPG/PNG)</label>
+              <input id="bgImage" type="file" accept="image/*">
+            </div>
           </div>
 
-          <div class="field">
-            <label for="businessDesc">Business Description</label>
-            <textarea id="businessDesc" placeholder="What do you do?"></textarea>
-          </div>
+          <div>
+            <div class="field">
+              <label>Logo</label>
+              <div class="brand-row">
+                <img id="logoPreview" alt="Logo preview">
+                <input id="logoFile" type="file" accept="image/*">
+              </div>
+              <div class="hint">Upload a logo or use the AI Logo Maker below.</div>
+            </div>
 
-          <div class="field">
-            <label for="services">Services (one per line)</label>
-            <textarea id="services" placeholder="Lawn care&#10;Tree trimming"></textarea>
-          </div>
-
-          <div class="field">
-            <label for="testimonials">Testimonials (Name | Quote per line)</label>
-            <textarea id="testimonials" placeholder="Alex | These folks are amazing!"></textarea>
-            <div class="hint">Use the format: <code>Name | Quote</code> per line.</div>
-          </div>
-
-          <div class="field">
-            <label for="seoTitle">SEO Title</label>
-            <input id="seoTitle" type="text" placeholder="e.g., Rizo Hats – Premium Hats">
-          </div>
-
-          <div class="field">
-            <label for="seoDesc">SEO Description</label>
-            <textarea id="seoDesc" placeholder="Short summary for search results."></textarea>
+            <div class="field">
+              <label>AI Logo Maker (Pro/Business)</label>
+              <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
+                <input id="aiBrand" type="text" placeholder="Brand / Business Name">
+                <input id="aiSlogan" type="text" placeholder="Slogan (optional)">
+                <input id="aiIndustry" type="text" placeholder="Industry (e.g., lawn care)">
+                <select id="aiStyle">
+                  <option>Minimal</option><option>Bold</option><option>Friendly</option><option>Professional</option>
+                </select>
+                <input id="aiColors" type="text" placeholder="Custom colors (e.g., #00A6FB,#001F54)">
+                <button id="genLogoBtn" class="btn" style="grid-column:1 / -1">Generate Logos</button>
+              </div>
+              <div class="hint" style="margin-top:6px">AI logos appear below; click one to use it.</div>
+              <div id="logoGallery" class="stack" style="margin-top:10px"></div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- PREVIEW -->
-      <section class="panel">
-        <div class="hd"><h2>Live Preview</h2></div>
-        <div class="bd">
-          <div id="preview" class="card preview">
-            <h3>Your website will preview here</h3>
-            <p class="muted">Fill the form and click <strong>Generate Website (Preview)</strong>.</p>
+    <!-- CONTENT -->
+    <section class="panel">
+      <div class="hd"><h2>Content</h2></div>
+      <div class="bd">
+        <div class="grid">
+          <div>
+            <div class="field"><label for="businessName">Business Name</label><input id="businessName" type="text" placeholder="e.g., Pristine Green"></div>
+            <div class="field"><label for="businessDesc">Business Description</label><textarea id="businessDesc" placeholder="What do you do?"></textarea></div>
+            <div class="field"><label for="services">Services (one per line)</label><textarea id="services" placeholder="Lawn care&#10;Tree trimming"></textarea></div>
+            <div class="field"><label for="testimonials">Testimonials (Name | Quote per line)</label><textarea id="testimonials" placeholder="Alex | Amazing service!"></textarea></div>
+          </div>
+          <div>
+            <div class="card preview-wrap" id="preview">
+              <h3>Your website will preview here</h3>
+              <p class="muted">Fill the form and click <strong>Generate Website (Preview)</strong>.</p>
+            </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
 
+    <!-- SEO & Analytics (Business) -->
+    <section class="panel" id="seoPanel">
+      <div class="hd"><h2>SEO & Analytics (Business plan)</h2></div>
+      <div class="bd">
+        <div class="grid">
+          <div>
+            <div class="field"><label for="seoTitle">SEO Title</label><input id="seoTitle" type="text" placeholder="Rizo Hats – Premium Hats"></div>
+            <div class="field"><label for="seoDesc">SEO Description</label><textarea id="seoDesc" placeholder="Short summary for search results."></textarea></div>
+            <div class="field"><label for="gaId">Google Analytics ID</label><input id="gaId" type="text" placeholder="G-XXXXXXXXXX"></div>
+            <div class="field"><label for="canonUrl">Canonical Site URL</label><input id="canonUrl" type="text" placeholder="https://yourdomain.com"></div>
+            <div class="field"><label for="gscToken">Google Search Console token (optional)</label><input id="gscToken" type="text" placeholder="HTML meta verification token"></div>
+          </div>
+          <div>
+            <p class="muted">These fields are used in the exported HTML and your Business plan features.</p>
+            <p class="muted">Download unlocks after payment.</p>
+          </div>
+        </div>
+        <div class="stack" style="margin-top:10px">
+          <button id="previewBtn2" class="btn outline">Generate Website (Preview)</button>
+          <button id="downloadBtn2" class="btn success">Download ZIP</button>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <!-- Load builder logic -->
   <script src="builder.js"></script>
 </body>
 </html>
