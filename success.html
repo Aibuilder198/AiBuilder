@@ -6,48 +6,59 @@
   <title>Payment Successful</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    :root { --text:#0f172a; --muted:#64748b; --ok:#16a34a; --bg:#f8fafc; }
-    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:860px;margin:48px auto;padding:0 16px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}
-    h1{margin:0 0 8px;font-weight:800}
-    .ok{color:var(--ok);font-weight:800}
-    .btn{display:inline-block;margin-top:14px;background:#2563eb;color:#fff;padding:12px 16px;border-radius:12px;text-decoration:none;font-weight:800}
-    .small{color:var(--muted);margin-top:10px}
+    :root { --ink:#0f172a; --muted:#64748b; --ok:#16a34a; --bg:#f9fafb; }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg); color:var(--ink); padding:40px;
+    }
+    .card{
+      max-width:600px;margin:0 auto;background:#fff;border-radius:16px;
+      padding:32px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06);
+      text-align:center;
+    }
+    h1{margin:0 0 12px;font-weight:800}
+    .ok{color:var(--ok)}
+    p{margin:0 0 20px;color:var(--muted)}
+    .btn{
+      display:inline-block;padding:12px 18px;border-radius:12px;
+      background:var(--ok);color:#fff;font-weight:700;text-decoration:none;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>✅ Payment Successful</h1>
-      <div id="status" class="small">Finalizing…</div>
-      <a id="backBtn" class="btn" href="/">Back to Builder</a>
-      <div class="small">You can now download your website from the builder page.</div>
-    </div>
+  <div class="card">
+    <h1 class="ok">✅ Payment Successful</h1>
+    <p id="status">Verifying your payment…</p>
+    <a href="/" class="btn">Return to Builder</a>
   </div>
 
   <script>
-    (function(){
-      // In a production flow, you can verify session_id with a Netlify function.
-      // For now, unlock downloads client-side after reaching success page:
-      try {
-        const params = new URLSearchParams(location.search);
-        const sid = params.get("session_id");
-        if (sid) {
-          // Optionally: fetch("/.netlify/functions/verify-session?session_id="+sid)
-          // For demo unlock:
-          localStorage.setItem("stripePaid","ok");
-          document.getElementById("status").textContent = "Payment verified. Download unlocked.";
-        } else {
-          // Even if Stripe didn’t append the param, unlock (you can tighten later)
-          localStorage.setItem("stripePaid","ok");
-          document.getElementById("status").textContent = "Payment verified.";
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      const sid = params.get("session_id");
+
+      if (sid) {
+        try {
+          // Verify session with Netlify function (sets cookie on success)
+          const res = await fetch("/.netlify/functions/verify-session?session_id=" + encodeURIComponent(sid));
+          const data = await res.json();
+
+          if (data.verified) {
+            document.getElementById("status").textContent = "Payment verified. You can now download your site.";
+          } else {
+            document.getElementById("status").textContent = "We couldn’t verify payment. Contact support.";
+          }
+        } catch (e) {
+          document.getElementById("status").textContent = "Error verifying payment.";
         }
-      } catch (e) {
-        console.warn(e);
-        localStorage.setItem("stripePaid","ok");
-        document.getElementById("status").textContent = "Payment verified.";
+      } else {
+        // Fallback (if session_id missing)
+        document.getElementById("status").textContent = "Payment complete. You can now download your site.";
       }
+
+      // Optional: redirect back to builder automatically
+      setTimeout(() => { window.location.href = "/"; }, 4000);
     })();
   </script>
 </body>
