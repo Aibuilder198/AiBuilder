@@ -357,10 +357,7 @@ const pricingData = [
 
 function renderPricing(selectedKey){
   const grid = document.getElementById('pricingGrid');
-  if (!grid) {
-    console.error('[pricing] #pricingGrid not found in DOM.');
-    return;
-  }
+  if (!grid) return;
   grid.innerHTML = pricingData.map(tier => {
     const active = tier.key === selectedKey ? 'active' : '';
     const lis = tier.bullets.map(b => {
@@ -383,65 +380,64 @@ function renderPricing(selectedKey){
 }
 
 function openPricingModal(){
-  try {
-    const selected = currentPlan();
-    renderPricing(selected);
+  const selected = currentPlan();
+  renderPricing(selected);
 
-    document.body.classList.add('modal-open');
-    document.getElementById('pricingBackdrop')?.classList.add('show');
+  document.body.classList.add('modal-open');
+  byId('pricingBackdrop')?.classList.add('show');
 
-    const modal = document.getElementById('pricingModal');
-    modal?.classList.add('show');               // show modal
-    modal?.setAttribute('aria-hidden','false');
+  const modal = byId('pricingModal');
+  modal?.classList.add('show');
+  modal?.setAttribute('aria-hidden','false');
 
-    const grid = document.getElementById('pricingGrid');
-    if (grid) {
-      grid.onclick = (e)=>{
-        const tierEl = e.target.closest('.tier');
-        if(!tierEl) return;
-        const key = tierEl.getAttribute('data-key');
+  const grid = byId('pricingGrid');
+  if (grid) {
+    grid.onclick = (e)=>{
+      const tierEl = e.target.closest('.tier');
+      if(!tierEl) return;
+      const key = tierEl.getAttribute('data-key');
 
-        if(e.target.matches('[data-action="choose"]')){
-          const radioValue = key === 'biz' ? 'business' : key;
-          const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
-          if (radio) radio.checked = true;
-          applyPlanLocks?.();
-          closePricingModal();
-        } else if(e.target.matches('[data-action="close"]')){
-          closePricingModal();
-        }
-      };
-    }
-
-    document.addEventListener('keydown', escCloser);
-  } catch (err) {
-    console.error('[pricing] failed to open modal:', err);
+      if(e.target.matches('[data-action="choose"]')){
+        const radioValue = key === 'biz' ? 'business' : key;
+        const radio = document.querySelector(`input[name="plan"][value="${radioValue}"]`);
+        if (radio) radio.checked = true;
+        applyPlanLocks?.();
+        closePricingModal();
+      } else if(e.target.matches('[data-action="close"]')){
+        closePricingModal();
+      }
+    };
   }
+
+  document.addEventListener('keydown', escCloser);
 }
 function closePricingModal(){
   document.body.classList.remove('modal-open');
-  document.getElementById('pricingBackdrop')?.classList.remove('show');
+  byId('pricingBackdrop')?.classList.remove('show');
 
-  const modal = document.getElementById('pricingModal');
-  modal?.classList.remove('show');              // hide modal
+  const modal = byId('pricingModal');
+  modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden','true');
 
   document.removeEventListener('keydown', escCloser);
 }
 function escCloser(e){ if (e.key === 'Escape') closePricingModal(); }
 
-document.getElementById('openPricing')?.addEventListener('click', openPricingModal);
-document.getElementById('pricingClose')?.addEventListener('click', closePricingModal);
-document.getElementById('pricingBackdrop')?.addEventListener('click', closePricingModal);
+byId('openPricing')?.addEventListener('click', openPricingModal);
+byId('pricingClose')?.addEventListener('click', closePricingModal);
+byId('pricingBackdrop')?.addEventListener('click', closePricingModal);
 
 /* ====== On load ====== */
 document.addEventListener('DOMContentLoaded', () => {
   applyPlanLocks();
-  updateBgUI();
+  updateBgUI(); // set initial state
 
-  // make absolutely sure modal starts hidden
-  document.getElementById('pricingBackdrop')?.classList.remove('show');
-  const modal = document.getElementById('pricingModal');
+  // 👇 make the background UI react immediately to changes
+  byId('bgType')?.addEventListener('change', updateBgUI);
+
+  // ensure modal is closed on first paint
+  byId('pricingBackdrop')?.classList.remove('show');
+  const modal = byId('pricingModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden','true');
 });
