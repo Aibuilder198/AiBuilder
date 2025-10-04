@@ -1,21 +1,31 @@
-/* ========= Stripe Price IDs ========= */
+/* ========= Stripe Prices ========= */
 const STRIPE_PRICES = {
-  basic: { price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", mode: "payment" },     // $20 one-time
-  pro:   { price: "price_1SDbHKAmJkffDNdtYP9sVw1T", mode: "subscription" }, // $29/mo
-  biz:   { price: "price_1SDbI1AmJkffDNdtjiqSI7qF", mode: "subscription" }  // $79/mo
+  basic: { price: "price_1SDFSNAmJkffDNdt0pAhcn8Y", mode: "payment" },
+  pro:   { price: "price_1SDbHKAmJkffDNdtYP9sVw1T", mode: "subscription" },
+  biz:   { price: "price_1SDbI1AmJkffDNdtjiqSI7qF", mode: "subscription" }
 };
-
 const byId = (id) => document.getElementById(id);
 
-/* ====== Plan detection & locks ====== */
+/* ===== Analytics ===== */
+async function track(event, data = {}) {
+  try {
+    await fetch('/.netlify/functions/track', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ event, data })
+    });
+  } catch (_) {}
+}
+track('page_view', { path: location.pathname, ts: Date.now() });
+
+/* ===== Plan helpers (same as before) ===== */
 function currentPlan() {
   const chosen =
     document.querySelector('input[name="plan"]:checked')?.value ||
-    document.getElementById('plan')?.value ||
-    'basic';
+    document.getElementById('plan')?.value || 'basic';
   const v = String(chosen).toLowerCase();
-  if (['business', 'biz', 'business-monthly', 'enterprise'].includes(v)) return 'biz';
-  if (['pro', 'professional'].includes(v)) return 'pro';
+  if (['business','biz','business-monthly','enterprise'].includes(v)) return 'biz';
+  if (['pro','professional'].includes(v)) return 'pro';
   return 'basic';
 }
 function toggleFields(ids, enabled) {
@@ -30,13 +40,13 @@ function applyPlanLocks() {
   const plan = currentPlan();
   const proEnabled = plan === 'pro' || plan === 'biz';
   const bizEnabled = plan === 'biz';
-  toggleFields(['services', 'testimonials', 'hours', 'address', 'formspree'], proEnabled);
-  toggleFields(['template', 'palette', 'brandColor', 'seoTitle', 'seoDescription', 'gaId'], bizEnabled);
+  toggleFields(['services','testimonials','hours','address','formspree'], proEnabled);
+  toggleFields(['template','palette','brandColor','seoTitle','seoDescription','gaId'], bizEnabled);
   const badge = byId('planBadge');
   if (badge) badge.textContent = plan === 'biz' ? 'Business' : (plan === 'pro' ? 'Pro' : 'Basic');
 }
 
-/* ====== BG controls visibility ====== */
+/* ===== Background UI ===== */
 function show(el, yes){ if(!el) return; el.classList[yes ? 'remove' : 'add']('hide'); }
 function updateBgUI() {
   const type = byId('bgType')?.value || 'default';
@@ -46,59 +56,34 @@ function updateBgUI() {
   show(byId('bgSolidRow'),    type === 'solid');
 }
 
-/* ====== Utils ====== */
+/* ===== Utils ===== */
 async function fileToDataURL(file) {
   const r = new FileReader();
   return new Promise((res, rej) => { r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
 const lines = (t) => (t || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-/* ====== Build site (with custom background) ====== */
+/* ===== Build background CSS for generated site ===== */
 function buildBackgroundCSS(bg) {
-  const overlayAlpha = Math.max(0, Math.min(0.9, bg.overlay)); // 0..0.9
+  const overlayAlpha = Math.max(0, Math.min(0.9, bg.overlay));
   if (bg.type === 'image-upload' || bg.type === 'image-url') {
     const img = bg.image || "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
-    return `
-      body{
-        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-        background:
-          linear-gradient(180deg, rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha})),
-          url("${img}") no-repeat center/cover fixed;
-      }`;
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg, rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha})), url("${img}") no-repeat center/cover fixed;}`;
   }
   if (bg.type === 'gradient') {
-    return `
-      body{
-        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-        background: radial-gradient(1200px 800px at 10% -10%, ${bg.color1}, transparent 60%),
-                    radial-gradient(1000px 700px at 90% 110%, ${bg.color2}, transparent 60%),
-                    #0b1221;
-      }`;
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background: radial-gradient(1200px 800px at 10% -10%, ${bg.color1}, transparent 60%), radial-gradient(1000px 700px at 90% 110%, ${bg.color2}, transparent 60%), #0b1221;}`;
   }
   if (bg.type === 'solid') {
-    return `
-      body{
-        margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-        background: ${bg.solid};
-      }`;
+    return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:${bg.solid};}`;
   }
-  // default
-  return `
-    body{
-      margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:
-        linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
-        url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop")
-        no-repeat center/cover fixed;
-    }`;
+  return `body{margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)), url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop") no-repeat center/cover fixed;}`;
 }
 
 function buildSiteHTML(opts) {
   const {
     businessName, description, logoDataURL, galleryDataURLs = [],
-    servicesText = "", testimonialsText = "", hoursText = "", address = "",
-    ctaText, email, phone, instagram,
-    bg
+    servicesText="", testimonialsText="", hoursText="", address="",
+    ctaText, email, phone, instagram, bg
   } = opts;
 
   const services = lines(servicesText);
@@ -115,32 +100,24 @@ function buildSiteHTML(opts) {
   ].filter(Boolean).join(" ");
 
   const galleryHTML = galleryDataURLs.length ? `
-    <section class="card">
-      <h2>Gallery</h2>
-      <div class="grid">
-        ${galleryDataURLs.map(src => `<figure class="thumb"><img src="${src}" alt=""></figure>`).join("")}
-      </div>
+    <section class="card"><h2>Gallery</h2>
+      <div class="grid">${galleryDataURLs.map(src => `<figure class="thumb"><img src="${src}" alt=""></figure>`).join("")}</div>
     </section>` : "";
 
   const servicesHTML = services.length ? `
-    <section class="card">
-      <h2>Services</h2>
+    <section class="card"><h2>Services</h2>
       <ul class="list">${services.map(s => `<li>${s}</li>`).join("")}</ul>
     </section>` : "";
 
   const testimonialsHTML = testimonials.length ? `
-    <section class="card">
-      <h2>Testimonials</h2>
+    <section class="card"><h2>Testimonials</h2>
       <div class="testis">${testimonials.map(t => `<blockquote><p>“${t.quote}”</p><footer>— ${t.name}</footer></blockquote>`).join("")}</div>
     </section>` : "";
 
   const hoursHTML = (hours.length || address) ? `
-    <section class="card">
-      <h2>Hours & Location</h2>
+    <section class="card"><h2>Hours & Location</h2>
       ${hours.length ? `<ul class="list">${hours.map(h => `<li>${h}</li>`).join("")}</ul>` : ""}
       ${address ? `<p class="address">${address}</p>` : ""}
-      ${address ? `<div class="mapWrap"><iframe title="Map" width="100%" height="280" loading="lazy" style="border:0;border-radius:12px"
-        src="https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed"></iframe></div>` : ""}
     </section>` : "";
 
   return `<!doctype html><html lang="en"><head>
@@ -187,24 +164,24 @@ function buildSiteHTML(opts) {
 </div></body></html>`;
 }
 
-/* ====== Collect form -> HTML ====== */
+/* ===== Collect form into HTML & store preview ===== */
 async function collectFormAsHTML() {
   const plan = currentPlan();
-  const proEnabled = plan === "pro" || plan === "biz";
+  const proEnabled = plan === 'pro' || plan === 'biz';
 
-  const businessName = (byId("businessName")?.value || "").trim();
-  const description  = (byId("description")?.value || "").trim();
-  const email        = (byId("email")?.value || "").trim();
-  const phone        = (byId("phone")?.value || "").trim();
-  const instagram    = (byId("instagram")?.value || "").trim();
-  const ctaText      = (byId("ctaText")?.value || "Contact Us").trim();
+  const businessName = (byId('businessName')?.value || '').trim();
+  const description  = (byId('description')?.value || '').trim();
+  const email        = (byId('email')?.value || '').trim();
+  const phone        = (byId('phone')?.value || '').trim();
+  const instagram    = (byId('instagram')?.value || '').trim();
+  const ctaText      = (byId('ctaText')?.value || 'Contact Us').trim();
 
-  let logoDataURL = "";
-  const logoInput = byId("logo");
+  let logoDataURL = '';
+  const logoInput = byId('logo');
   if (logoInput?.files?.[0]) logoDataURL = await fileToDataURL(logoInput.files[0]);
 
   const galleryDataURLs = [];
-  const galleryInput = byId("gallery");
+  const galleryInput = byId('gallery');
   if (galleryInput?.files?.length) {
     const files = Array.from(galleryInput.files).slice(0, 6);
     for (const f of files) {
@@ -212,151 +189,125 @@ async function collectFormAsHTML() {
     }
   }
 
-  const bgType = byId("bgType")?.value || "default";
-  let bgImage = "";
-  if (bgType === "image-upload") {
-    const f = byId("bgUpload")?.files?.[0];
+  const bgType = byId('bgType')?.value || 'default';
+  let bgImage = '';
+  if (bgType === 'image-upload') {
+    const f = byId('bgUpload')?.files?.[0];
     if (f) bgImage = await fileToDataURL(f);
-  } else if (bgType === "image-url") {
-    bgImage = (byId("bgUrl")?.value || "").trim();
+  } else if (bgType === 'image-url') {
+    bgImage = (byId('bgUrl')?.value || '').trim();
   }
-  const bgOverlayPct = parseInt(byId("bgOverlay")?.value || "55", 10);
+  const bgOverlayPct = parseInt(byId('bgOverlay')?.value || '55', 10);
   const bg = {
     type: bgType,
     image: bgImage,
-    color1: byId("bgColor1")?.value || "#0ea5e9",
-    color2: byId("bgColor2")?.value || "#2563eb",
-    solid: byId("bgSolid")?.value || "#0b1221",
+    color1: byId('bgColor1')?.value || '#0ea5e9',
+    color2: byId('bgColor2')?.value || '#2563eb',
+    solid: byId('bgSolid')?.value || '#0b1221',
     overlay: isNaN(bgOverlayPct) ? 0.55 : Math.max(0, Math.min(0.9, bgOverlayPct / 100))
   };
 
-  const servicesText     = proEnabled ? (byId("services")?.value || "") : "";
-  const testimonialsText = proEnabled ? (byId("testimonials")?.value || "") : "";
-  const hoursText        = proEnabled ? (byId("hours")?.value || "") : "";
-  const address          = proEnabled ? (byId("address")?.value || "") : "";
+  const servicesText     = proEnabled ? (byId('services')?.value || '') : '';
+  const testimonialsText = proEnabled ? (byId('testimonials')?.value || '') : '';
+  const hoursText        = proEnabled ? (byId('hours')?.value || '') : '';
+  const address          = proEnabled ? (byId('address')?.value || '') : '';
 
   return buildSiteHTML({
     businessName, description, logoDataURL, galleryDataURLs,
     servicesText, testimonialsText, hoursText, address,
-    ctaText, email, phone, instagram,
-    bg
+    ctaText, email, phone, instagram, bg
   });
 }
 
-/* ====== Save built site so success page can offer download ====== */
 function saveSiteToLocalStorage(html) {
   try {
     const b64 = btoa(unescape(encodeURIComponent(html)));
-    localStorage.setItem("site_html_base64", b64);
-  } catch (e) {
-    console.warn("Could not store site in localStorage:", e);
-  }
+    localStorage.setItem('site_html_base64', b64);
+  } catch (e) { console.warn('localStorage save failed', e); }
 }
 
-/* ====== Preview generation ====== */
-byId("builderForm").addEventListener("submit", async (e) => {
+/* ===== Preview generation ===== */
+byId('builderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
     const html = await collectFormAsHTML();
     saveSiteToLocalStorage(html);
 
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-
-    const preview = byId("previewArea");
-    preview.innerHTML = `
+    byId('previewArea').innerHTML = `
       <p><strong>Preview (not downloadable):</strong></p>
       <iframe src="${url}" width="100%" height="620" style="border:1px solid #e2e8f0;border-radius:12px;"></iframe>
-      <p style="margin-top:8px;color:#e5e7eb">
-        Want the file? Choose a plan and complete checkout — you’ll unlock the download on the success page.
-      </p>`;
+      <p style="margin-top:8px;color:#e5e7eb">Want the file? Choose a plan and complete checkout — you’ll unlock the download on the success page.</p>`;
+    track('preview_generated');
   } catch (err) {
     console.error(err);
-    alert("Could not generate site. See console for details.");
+    alert('Could not generate site. See console for details.');
   }
 });
 
-/* ====== Checkout ====== */
+/* ===== Checkout ===== */
 function selectedPlanConfig() {
   const plan = currentPlan();
-  return plan === "pro" ? STRIPE_PRICES.pro : (plan === "biz" ? STRIPE_PRICES.biz : STRIPE_PRICES.basic);
+  return plan === 'pro' ? STRIPE_PRICES.pro : (plan === 'biz' ? STRIPE_PRICES.biz : STRIPE_PRICES.basic);
 }
-byId("checkoutBtn").addEventListener("click", async () => {
+byId('checkoutBtn').addEventListener('click', async () => {
   const cfg = selectedPlanConfig();
   try {
     const html = await collectFormAsHTML();
     saveSiteToLocalStorage(html);
 
-    const res = await fetch("/.netlify/functions/create-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/.netlify/functions/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({
         items: [{ price: cfg.price, quantity: 1 }],
         mode: cfg.mode,
         sitePayload: {
-          businessName: byId("businessName")?.value || "",
-          description: byId("description")?.value || ""
+          businessName: byId('businessName')?.value || '',
+          description: byId('description')?.value || ''
         },
         planName: currentPlan()
       })
     });
-
     const data = await res.json();
-    if (!res.ok || !data?.url) throw new Error(data?.error || "No checkout URL returned.");
+    if (!res.ok || !data?.url) throw new Error(data?.error || 'No checkout URL');
+    track('checkout_started', { plan: currentPlan() });
     window.location.href = data.url;
   } catch (err) {
-    console.error("Checkout error:", err);
-    alert("Checkout failed. See console for details.");
+    console.error('Checkout error:', err);
+    alert('Checkout failed. See console for details.');
   }
 });
 
-/* ===== Pricing Modal (robust & hidden by default) ===== */
+/* ===== Pricing modal (same as before) ===== */
 const pricingData = [
-  {
-    key: 'basic',
-    name: 'Basic',
-    price: '$20',
-    pill: 'one-time',
-    bullets: [
-      { ok:true,  text:'Downloadable website after payment' },
-      { ok:true,  text:'Logo + up to a few gallery images' },
-      { ok:true,  text:'Clean, modern single-page layout' },
-      { ok:false, text:'Services, Testimonials, Hours/Location' },
-      { ok:false, text:'Custom themes / palette / brand color' },
-      { ok:false, text:'SEO fields & Analytics' },
-    ]
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: '$29.00',
-    pill: 'per month',
-    bullets: [
-      { ok:true,  text:'Everything in Basic' },
-      { ok:true,  text:'Services, Testimonials, Hours/Location' },
-      { ok:true,  text:'Contact form ready (Formspree)' },
-      { ok:true,  text:'Priority preview speed' },
-      { ok:false, text:'Custom themes / palette / brand color' },
-      { ok:false, text:'SEO fields & Analytics' },
-    ]
-  },
-  {
-    key: 'biz',
-    name: 'Business',
-    price: '$79.00',
-    pill: 'per month',
-    bullets: [
-      { ok:true,  text:'Everything in Pro' },
-      { ok:true,  text:'Themes, palette, custom brand color' },
-      { ok:true,  text:'SEO title & description' },
-      { ok:true,  text:'Google Analytics slot' },
-      { ok:true,  text:'Best for growth & A/B iteration' },
-    ]
-  },
+  { key:'basic', name:'Basic', price:'$20', pill:'one-time', bullets:[
+    {ok:true,text:'Downloadable website after payment'},
+    {ok:true,text:'Logo + up to a few gallery images'},
+    {ok:true,text:'Clean, modern single-page layout'},
+    {ok:false,text:'Services, Testimonials, Hours/Location'},
+    {ok:false,text:'Custom themes / palette / brand color'},
+    {ok:false,text:'SEO fields & Analytics'},
+  ]},
+  { key:'pro', name:'Pro', price:'$29.00', pill:'per month', bullets:[
+    {ok:true,text:'Everything in Basic'},
+    {ok:true,text:'Services, Testimonials, Hours/Location'},
+    {ok:true,text:'Contact form ready (Formspree)'},
+    {ok:true,text:'Priority preview speed'},
+    {ok:false,text:'Custom themes / palette / brand color'},
+    {ok:false,text:'SEO fields & Analytics'},
+  ]},
+  { key:'biz', name:'Business', price:'$79.00', pill:'per month', bullets:[
+    {ok:true,text:'Everything in Pro'},
+    {ok:true,text:'Themes, palette, custom brand color'},
+    {ok:true,text:'SEO title & description'},
+    {ok:true,text:'Google Analytics slot'},
+    {ok:true,text:'Best for growth & A/B iteration'},
+  ]},
 ];
-
 function renderPricing(selectedKey){
-  const grid = document.getElementById('pricingGrid');
+  const grid = byId('pricingGrid');
   if (!grid) return;
   grid.innerHTML = pricingData.map(tier => {
     const active = tier.key === selectedKey ? 'active' : '';
@@ -378,14 +329,11 @@ function renderPricing(selectedKey){
       </div>`;
   }).join('');
 }
-
 function openPricingModal(){
   const selected = currentPlan();
   renderPricing(selected);
-
   document.body.classList.add('modal-open');
   byId('pricingBackdrop')?.classList.add('show');
-
   const modal = byId('pricingModal');
   modal?.classList.add('show');
   modal?.setAttribute('aria-hidden','false');
@@ -408,36 +356,79 @@ function openPricingModal(){
       }
     };
   }
-
   document.addEventListener('keydown', escCloser);
 }
 function closePricingModal(){
   document.body.classList.remove('modal-open');
   byId('pricingBackdrop')?.classList.remove('show');
-
   const modal = byId('pricingModal');
   modal?.classList.remove('show');
   modal?.setAttribute('aria-hidden','true');
-
   document.removeEventListener('keydown', escCloser);
 }
 function escCloser(e){ if (e.key === 'Escape') closePricingModal(); }
-
 byId('openPricing')?.addEventListener('click', openPricingModal);
 byId('pricingClose')?.addEventListener('click', closePricingModal);
 byId('pricingBackdrop')?.addEventListener('click', closePricingModal);
 
-/* ====== On load ====== */
+/* ===== Lead Modal ===== */
+function openLead(){
+  byId('leadBackdrop')?.classList.add('show');
+  byId('leadModal')?.classList.add('show');
+  byId('leadModal')?.setAttribute('aria-hidden','false');
+}
+function closeLead(){
+  byId('leadBackdrop')?.classList.remove('show');
+  byId('leadModal')?.classList.remove('show');
+  byId('leadModal')?.setAttribute('aria-hidden','true');
+}
+byId('openLead')?.addEventListener('click', openLead);
+byId('leadCancel')?.addEventListener('click', closeLead);
+byId('leadBackdrop')?.addEventListener('click', closeLead);
+
+/* Submit lead to function */
+byId('leadForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = byId('leadName')?.value?.trim();
+  const email = byId('leadEmail')?.value?.trim();
+  const phone = byId('leadPhone')?.value?.trim();
+  const message = byId('leadMsg')?.value?.trim();
+
+  try {
+    const res = await fetch('/.netlify/functions/lead', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        name, email, phone, message,
+        source: 'builder_fab',
+        siteUrl: location.href
+      })
+    });
+    const data = await res.json().catch(()=> ({}));
+    if (!res.ok || data?.error) throw new Error(data?.error || 'Send failed');
+
+    track('lead_submitted', { via:'fab' });
+    closeLead();
+    showToast('Thanks! We’ll get back to you shortly.');
+    e.target.reset();
+  } catch (err) {
+    console.error(err);
+    showToast('Sorry, something went wrong. Try again?', true);
+  }
+});
+
+function showToast(msg, danger=false){
+  const t = byId('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.style.background = danger ? '#ef4444' : '#16a34a';
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2600);
+}
+
+/* ===== Init ===== */
 document.addEventListener('DOMContentLoaded', () => {
   applyPlanLocks();
-  updateBgUI(); // set initial state
-
-  // 👇 make the background UI react immediately to changes
+  updateBgUI();
   byId('bgType')?.addEventListener('change', updateBgUI);
-
-  // ensure modal is closed on first paint
-  byId('pricingBackdrop')?.classList.remove('show');
-  const modal = byId('pricingModal');
-  modal?.classList.remove('show');
-  modal?.setAttribute('aria-hidden','true');
 });
