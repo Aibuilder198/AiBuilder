@@ -42,7 +42,7 @@
     .hide{display:none !important}
     @media (max-width:900px){.grid{grid-template-columns:1fr}}
 
-    /* Pricing modal (same as before) */
+    /* Pricing modal */
     body.modal-open { overflow: hidden; }
     .pricing-backdrop{position:fixed; inset:0; z-index:100000; display:none; background:rgba(2,8,23,.6); backdrop-filter: blur(4px);}
     .pricing-backdrop.show{ display:block; }
@@ -112,11 +112,7 @@
 
     <div class="grid">
       <div class="card">
-        <!-- (Your form from earlier – unchanged) -->
         <form id="builderForm">
-          <!-- … (same fields as your last version) … -->
-          <!-- For brevity: keep all the fields you already have (businessName, description, bg controls, etc.) -->
-          <!-- START minimal required fields (keep the rest of your fields as-is) -->
           <h2>Content</h2>
           <label for="businessName">Business Name</label>
           <input id="businessName" type="text" placeholder="e.g., Pristine Green" required />
@@ -201,7 +197,67 @@
             <input id="bgSolid" type="color" value="#0b1221" />
           </div>
 
-          <!-- (Pro/Business sections – keep your existing ones) -->
+          <!-- ===== PRO FEATURES ===== -->
+          <h2>Pro Features</h2>
+          <label for="services">Services <span class="hint">(one per line)</span></label>
+          <textarea id="services" placeholder="Lawn care&#10;Trimming&#10;Fertilization"></textarea>
+
+          <label for="testimonials">Testimonials <span class="hint">(Name | Quote per line)</span></label>
+          <textarea id="testimonials" placeholder="Jane | These folks are amazing!&#10;Sam | Great quality and fast service."></textarea>
+
+          <div class="row">
+            <div>
+              <label for="hours">Hours <span class="hint">(one per line)</span></label>
+              <textarea id="hours" placeholder="Mon–Fri: 9am–5pm&#10;Sat: 10am–2pm"></textarea>
+            </div>
+            <div>
+              <label for="address">Address</label>
+              <input id="address" type="text" placeholder="123 Main St, Springfield" />
+            </div>
+          </div>
+
+          <!-- ===== BUSINESS FEATURES ===== -->
+          <h2>Business Features</h2>
+          <div class="row3">
+            <div>
+              <label for="template">Theme / Template</label>
+              <select id="template">
+                <option value="classic" selected>Classic</option>
+                <option value="bold">Bold</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </div>
+            <div>
+              <label for="palette">Palette</label>
+              <select id="palette">
+                <option value="blue" selected>Blue</option>
+                <option value="emerald">Emerald</option>
+                <option value="rose">Rose</option>
+                <option value="slate">Slate</option>
+              </select>
+            </div>
+            <div>
+              <label for="brandColor">Custom Brand Color</label>
+              <input id="brandColor" type="color" value="#2563eb" />
+            </div>
+          </div>
+
+          <h2>SEO & Analytics</h2>
+          <label for="seoTitle">SEO Title</label>
+          <input id="seoTitle" type="text" placeholder="Best Lawn Care in Springfield | Pristine Green" />
+
+          <label for="seoDescription">SEO Description</label>
+          <textarea id="seoDescription" placeholder="Professional lawn care & landscaping in Springfield. Free quotes, great reviews, and reliable service."></textarea>
+
+          <label for="gaId">Google Analytics ID <span class="hint">(e.g., G-XXXXXXXXX)</span></label>
+          <input id="gaId" type="text" placeholder="G-XXXXXXXXX" />
+
+          <!-- (Simple contact-form integration toggle if you want to use Formspree later) -->
+          <label for="formspree">Contact form provider <span class="hint">(optional)</span></label>
+          <select id="formspree">
+            <option value="">None</option>
+            <option value="formspree">Formspree</option>
+          </select>
 
           <div class="btnBar">
             <button type="submit">Generate Website (Preview)</button>
