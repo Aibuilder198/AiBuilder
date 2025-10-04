@@ -1,319 +1,540 @@
-<!doctype html>
+// ===== builder.js =====
+
+/* ---------- Helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const val = (id) => ($(id)?.value || "").trim();
+const fileToDataURL = (file) =>
+  new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+/* ---------- Plans & Gating ---------- */
+function currentPlan() {
+  const checked = document.querySelector('input[name="plan"]:checked');
+  return (checked?.value || "basic").toLowerCase();
+}
+
+function toggleDisabled(ids, enabled) {
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    el.classList.toggle("disabled", !enabled);
+  });
+}
+
+function applyPlanLocks() {
+  const plan = currentPlan();
+  const isPro = plan === "pro" || plan === "business";
+  const isBiz = plan === "business";
+
+  // Pro unlocks:
+  toggleDisabled(
+    ["services", "testimonials", "hours", "address", "formspree"],
+    isPro
+  );
+
+  // Business unlocks:
+  toggleDisabled(
+    [
+      "template",
+      "palette",
+      "brandColor",
+      "seoTitle",
+      "seoDescription",
+      "gaId",
+      "allowIndexing",
+      "siteUrl",
+      "gscToken",
+    ],
+    isBiz
+  );
+}
+
+/* ---------- Background UI toggle ---------- */
+function show(el, on) {
+  if (!el) return;
+  el.classList[on ? "remove" : "add"]("hide");
+}
+function updateBgUI() {
+  const v = $("bgType")?.value || "default";
+  show($("bgUploadRow"), v === "image-upload");
+  show($("bgUrlRow"), v === "image-url");
+  show($("bgGradientRow"), v === "gradient");
+  show($("bgSolidRow"), v === "solid");
+}
+
+/* ---------- Theme / Palette ---------- */
+function paletteToColors(palette, brandColorInput) {
+  const map = {
+    blue: { brand: "#2563eb", bg1: "#0ea5e9", bg2: "#2563eb" },
+    emerald: { brand: "#10b981", bg1: "#34d399", bg2: "#10b981" },
+    rose: { brand: "#f43f5e", bg1: "#fb7185", bg2: "#f43f5e" },
+    slate: { brand: "#64748b", bg1: "#94a3b8", bg2: "#64748b" },
+  };
+  const base = map[palette] || map.blue;
+  const brand =
+    (brandColorInput && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(brandColorInput))
+      ? brandColorInput
+      : base.brand;
+  return { brand, bg1: base.bg1, bg2: base.bg2 };
+}
+
+/* ---------- SEO / Head tags ---------- */
+function buildJsonLd(site) {
+  const openingHours = (site.hours || [])
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const sameAs = [];
+  if (site.instagram) sameAs.push(site.instagram);
+
+  const obj = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: site.businessName,
+    description: site.description,
+    url: site.siteUrl || undefined,
+    telephone: site.phone || undefined,
+    sameAs: sameAs.length ? sameAs : undefined,
+    openingHours: openingHours.length ? openingHours : undefined,
+  };
+  if (site.address) {
+    obj.address = { "@type": "PostalAddress", streetAddress: site.address };
+  }
+  return obj;
+}
+
+function escapeHtml(s = "") {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildHeadTags(site) {
+  const isBiz = site.plan === "business";
+  const allowIndex = isBiz && site.allowIndexing;
+  const robots = allowIndex ? "index,follow" : "noindex,nofollow";
+
+  const title = isBiz && site.seoTitle ? site.seoTitle : site.businessName;
+  const desc =
+    isBiz && site.seoDescription ? site.seoDescription : site.description || "";
+
+  const canonical =
+    isBiz && site.siteUrl
+      ? `<link rel="canonical" href="${escapeHtml(site.siteUrl)}">`
+      : "";
+
+  const gsc =
+    isBiz && site.gscToken
+      ? `<meta name="google-site-verification" content="${escapeHtml(
+          site.gscToken
+        )}">`
+      : "";
+
+  const og = `
+<meta property="og:title" content="${escapeHtml(title)}">
+<meta property="og:description" content="${escapeHtml(desc)}">
+${site.siteUrl ? `<meta property="og:url" content="${escapeHtml(site.siteUrl)}">` : ""}
+<meta property="og:type" content="website">`;
+
+  const tw = `
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeHtml(title)}">
+<meta name="twitter:description" content="${escapeHtml(desc)}">`;
+
+  const jsonLd = JSON.stringify(buildJsonLd(site));
+
+  const ga = isBiz && site.gaId
+    ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(
+        site.gaId
+      )}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); gtag('config', '${escapeHtml(site.gaId)}');
+</script>`
+    : "";
+
+  return `
+<meta name="robots" content="${robots}">
+${gsc}
+${canonical}
+<title>${escapeHtml(title)}</title>
+<meta name="description" content="${escapeHtml(desc)}">
+${og}
+${tw}
+<script type="application/ld+json">${jsonLd}</script>
+${ga}`;
+}
+
+/* ---------- Background CSS for generated site ---------- */
+function backgroundCSS(bg, colors) {
+  const overlay = Math.max(0, Math.min(0.9, bg.overlay || 0.55));
+  if (bg.type === "image-upload" || bg.type === "image-url") {
+    const img =
+      bg.image ||
+      "https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop";
+    return `
+body{
+  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,${overlay}), rgba(0,0,0,${overlay})),
+    url("${img}") center/cover fixed no-repeat;
+}`;
+  }
+  if (bg.type === "gradient") {
+    return `
+body{
+  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    radial-gradient(1200px 800px at 10% -10%, ${colors.bg1}, transparent 60%),
+    radial-gradient(1000px 700px at 90% 110%, ${colors.bg2}, transparent 60%),
+    #0b1221;
+}`;
+  }
+  if (bg.type === "solid") {
+    return `
+body{
+  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:${bg.solid || "#0b1221"};
+}`;
+  }
+  // default
+  return `
+body{
+  margin:0;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:
+    linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)),
+    url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop") center/cover fixed no-repeat;
+}`;
+}
+
+/* ---------- Build full page HTML ---------- */
+function buildPageHTML(site) {
+  const head = buildHeadTags(site);
+  const cssBg = backgroundCSS(site.bg, site.colors);
+  const brand = site.colors.brand;
+
+  // Optional blocks
+  const logoBlock = site.logoDataURL
+    ? `<img class="logo" src="${site.logoDataURL}" alt="Logo">`
+    : "";
+
+  const galleryBlock =
+    site.galleryDataURLs && site.galleryDataURLs.length
+      ? `<section class="card">
+  <h2>Gallery</h2>
+  <div class="grid">
+    ${site.galleryDataURLs
+      .map((src) => `<figure class="thumb"><img src="${src}" alt=""></figure>`)
+      .join("")}
+  </div>
+</section>`
+      : "";
+
+  const servicesList =
+    site.services?.length
+      ? `<section class="card">
+  <h2>Services</h2>
+  <ul class="list">${site.services.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+</section>`
+      : "";
+
+  const testimonialsList =
+    site.testimonials?.length
+      ? `<section class="card">
+  <h2>Testimonials</h2>
+  <div class="testis">
+    ${site.testimonials
+      .map(
+        (t) =>
+          `<blockquote><p>“${escapeHtml(t.quote)}”</p><footer>— ${escapeHtml(
+            t.name
+          )}</footer></blockquote>`
+      )
+      .join("")}
+  </div>
+</section>`
+      : "";
+
+  const hoursLoc =
+    site.hours?.length || site.address
+      ? `<section class="card">
+  <h2>Hours & Location</h2>
+  ${site.hours?.length ? `<ul class="list">${site.hours.map((h)=>`<li>${escapeHtml(h)}</li>`).join("")}</ul>` : ""}
+  ${site.address ? `<p class="address">${escapeHtml(site.address)}</p>` : ""}
+  ${
+    site.address
+      ? `<div class="mapWrap"><iframe title="Map" width="100%" height="280" loading="lazy" style="border:0;border-radius:12px"
+    src="https://www.google.com/maps?q=${encodeURIComponent(
+      site.address
+    )}&output=embed"></iframe></div>`
+      : ""
+  }
+</section>`
+      : "";
+
+  const contactBits = [
+    site.email
+      ? `<a class="contact" href="mailto:${escapeHtml(site.email)}">Email: ${escapeHtml(
+          site.email
+        )}</a>`
+      : "",
+    site.phone ? `<span class="contact">Phone: ${escapeHtml(site.phone)}</span>` : "",
+    site.instagram
+      ? `<a class="contact" href="${escapeHtml(
+          site.instagram
+        )}" target="_blank" rel="noopener">Instagram</a>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  // Page CSS
+  const css = `
+:root{ --brand:${brand}; --ink:#0f172a }
+*{ box-sizing:border-box } html,body{ height:100% }
+${cssBg}
+.veil{ min-height:100%; background:linear-gradient(180deg,rgba(0,0,0,.0),rgba(0,0,0,.22)); display:flex; flex-direction:column; }
+header{ padding:22px 16px; display:flex; align-items:center; gap:12px; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.4) }
+header .logo{ height:44px; background:#fff; padding:4px; border-radius:8px }
+header h1{ margin:0; font-size:28px }
+main{ max-width:1000px; width:100%; margin:24px auto 40px; padding:0 16px }
+.card{ background:rgba(255,255,255,.92); color:var(--ink); backdrop-filter:blur(6px); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); padding:22px; margin-bottom:22px }
+.card.hero{ background:rgba(255,255,255,.96) }
+.cta{ display:inline-block; margin-top:12px; background:var(--brand); color:#fff; padding:10px 16px; border-radius:10px; text-decoration:none }
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-top:10px }
+.thumb{ border-radius:12px; overflow:hidden; background:#fff }
+.thumb img{ width:100%; height:160px; object-fit:cover; display:block }
+.list{ padding-left:18px } .testis{ display:grid; gap:12px }
+blockquote{ margin:0; padding:14px; background:#ffffff15; border-left:4px solid var(--brand); border-radius:10px; color:#111827 }
+.contact{ display:inline-block; margin-right:12px; color:var(--brand) }
+footer{ text-align:center; color:#e5e7eb; padding:24px 12px; text-shadow:0 2px 10px rgba(0,0,0,.4) }
+`;
+
+  // HTML
+  return `<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Create a Simple Business Website powered by AI</title>
-  <style>
-    :root {
-      --ink:#0f172a; --muted:#475569; --card:#ffffff; --bg:#0b1221; --brand:#2563eb;
-      --border:rgba(255,255,255,.18); --shadow:0 20px 60px rgba(2,8,23,.25);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#e8eefc; background: var(--bg); overflow-x:hidden; }
-    .bg{position:fixed; inset:0; z-index:-3;background:radial-gradient(1200px 800px at 10% -10%, rgba(37,99,235,.35), transparent 60%),radial-gradient(1000px 700px at 90% 110%, rgba(244,63,94,.25), transparent 60%);}
-    .bg::before{content:""; position:absolute; inset:0; z-index:-2;background:linear-gradient(180deg, rgba(8,13,25,.75), rgba(8,13,25,.85)), url("https://images.unsplash.com/photo-1520975922326-0f1f1a6f63e0?q=80&w=1920&auto=format&fit=crop"); background-size: cover; background-position: center; filter:saturate(1.05) contrast(1.05);}
-    .blob, .blob2{position:fixed; width:55vmax; height:55vmax; border-radius:50%; filter: blur(70px); opacity:.45; z-index:-1; pointer-events:none; animation: float 22s ease-in-out infinite alternate; mix-blend-mode: screen;}
-    .blob{ background: radial-gradient(circle at 30% 30%, #60a5fa, transparent 55%); top:-10vmax; left:-15vmax }
-    .blob2{ background: radial-gradient(circle at 70% 70%, #f472b6, transparent 55%); bottom:-12vmax; right:-18vmax; animation-duration:26s }
-    @keyframes float{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(2vmax,-2vmax,0) scale(1.05)}}
-    .grain{position:fixed; inset:0; z-index:-1; pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='0 0 0 0 .05 .1 .08 .06 .05 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");background-size:180px 180px; opacity:.18;}
-
-    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
-    h1{margin:0 0 8px; text-shadow:0 6px 24px rgba(0,0,0,.35)}
-    .muted{color:#c7d2fe}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .card{background: rgba(255,255,255,.08); border:1px solid var(--border); border-radius:16px; box-shadow: var(--shadow); padding:18px; backdrop-filter: blur(10px);}
-    label{display:block;font-weight:700;margin:10px 0 6px}
-    input[type="text"],input[type="email"],input[type="url"],input[type="color"],textarea,select{width:100%;padding:12px;border:1px solid rgba(255,255,255,.18); border-radius:12px;font:inherit;background:rgba(255,255,255,.06); color:#e8eefc; outline:none;}
-    input::placeholder, textarea::placeholder{ color:#a8b3cf }
-    textarea{min-height:110px;resize:vertical}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    .btnBar{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
-    button{background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;border:0;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:800; box-shadow:0 10px 30px rgba(37,99,235,.35);}
-    button:hover{ filter:brightness(1.05) }
-    button.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2)}
-    #previewArea{margin-top:18px}
-    .disabled{opacity:.55}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(99,102,241,.25);color:#fff;font-weight:800;border:1px solid rgba(255,255,255,.25)}
-    .hint{font-size:13px;color:#bac6ff}
-    .hide{display:none !important}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}}
-
-    /* Pricing modal */
-    body.modal-open { overflow: hidden; }
-    .pricing-backdrop{position:fixed; inset:0; z-index:100000; display:none; background:rgba(2,8,23,.6); backdrop-filter: blur(4px);}
-    .pricing-backdrop.show{ display:block; }
-    .pricing-modal{position:fixed; inset:0; z-index:100001; display:none; place-items:center; pointer-events:none;}
-    .pricing-modal.show{ display:grid; }
-    .pricing-sheet{pointer-events:auto; width:min(1100px, calc(100% - 28px)); max-height:85vh; overflow:auto; background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.08)); border:1px solid rgba(255,255,255,.18); border-radius:18px; box-shadow:0 30px 100px rgba(0,0,0,.5); padding:22px; color:#eaf0ff;}
-    .pricing-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .pricing-title{font-size:22px;font-weight:800}
-    .pricing-close{background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-    .pricing-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;} @media (max-width:900px){ .pricing-grid{ grid-template-columns:1fr } }
-    .tier{background:rgba(13,20,38,.55); border:1px solid rgba(255,255,255,.18); border-radius:16px; padding:18px;}
-    .tier.active{background:linear-gradient(180deg, rgba(59,130,246,.25), rgba(37,99,235,.18)); border-color:rgba(148,163,255,.45); box-shadow:0 18px 50px rgba(37,99,235,.35);}
-    .tier-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-    .tier-name{font-size:18px;font-weight:800}
-    .tier-price{font-size:26px;font-weight:900}
-    .tier-pill{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
-    .tier-list{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}
-    .tier-list li{display:flex;gap:8px;align-items:flex-start}
-    .tier-ok{color:#22c55e;font-weight:800}
-    .tier-no{color:#ef4444;font-weight:800}
-    .tier-cta{margin-top:12px;display:flex;gap:8px}
-    .tier-cta button{background:linear-gradient(180deg,#3b82f6,#2563eb); color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:800}
-    .tier-cta .ghost{background:transparent;border:1px solid rgba(255,255,255,.35)}
-    .view-details{font-size:13px;color:#c7d2fe;border:0;background:transparent;text-decoration:underline;cursor:pointer;}
-
-    /* Lead FAB + Modal */
-    .fab{
-      position: fixed; right: 18px; bottom: 18px; z-index: 10;
-      background: linear-gradient(180deg,#22c55e,#16a34a); color:#fff;
-      border:0; padding:14px 18px; border-radius:999px; font-weight:900; box-shadow:0 18px 40px rgba(22,163,74,.4); cursor:pointer;
-    }
-    .lead-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter: blur(2px); z-index:10050; display:none; }
-    .lead-backdrop.show{ display:block; }
-    .lead-modal{ position:fixed; inset:0; display:none; place-items:center; z-index:10051; }
-    .lead-modal.show{ display:grid; }
-    .lead-sheet{ width:min(560px, calc(100% - 28px)); background:#0f172acc; border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:16px; padding:18px; backdrop-filter: blur(8px); }
-    .lead-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px;}
-    .toast{ position: fixed; left:50%; transform: translateX(-50%); bottom: 24px; background: #16a34a; color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:10060; }
-    .toast.show{ display:block; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+${head}
+<style>${css}</style>
 </head>
 <body>
-  <div class="bg"></div><div class="blob"></div><div class="blob2"></div><div class="grain"></div>
+<div class="veil">
+<header>
+  ${logoBlock}
+  <h1>${escapeHtml(site.businessName)}</h1>
+</header>
+<main>
+  <section class="card hero">
+    <h2>About Us</h2>
+    <p>${escapeHtml(site.description || "")}</p>
+    <a class="cta" href="mailto:${escapeHtml(site.email || "hello@example.com")}">${escapeHtml(site.ctaText || "Contact Us")}</a>
+  </section>
 
-  <div class="wrap">
-    <h1>Create a Simple Business Website powered by AI</h1>
-    <p class="muted">Preview is free. Download unlocks after payment.</p>
+  ${servicesList}
+  ${testimonialsList}
+  ${galleryBlock}
+  ${hoursLoc}
 
-    <div class="card">
-      <h2>Choose a Plan <span id="planBadge" class="pill">Basic</span></h2>
-      <div class="plan">
-        <form name="planForm">
-          <label><input type="radio" name="plan" value="basic" checked> Basic ($20 one-time)</label>
-          &nbsp;&nbsp;
-          <label><input type="radio" name="plan" value="pro"> Pro ($29/mo)</label>
-          &nbsp;&nbsp;
-          <label><input type="radio" name="plan" value="business"> Business ($79/mo)</label>
-        </form>
-      </div>
-      <p style="margin:6px 0 0"><button type="button" class="view-details" id="openPricing">View plan details</button></p>
-      <p class="hint" style="margin-top:6px">
-        <strong>Basic:</strong> single page (+logo, up to a few images).
-        <strong>Pro:</strong> adds Services, Testimonials, Hours/Location, Contact form.
-        <strong>Business:</strong> adds Themes, Palette, Custom Brand Color, SEO, Analytics.
-      </p>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <form id="builderForm">
-          <h2>Content</h2>
-          <label for="businessName">Business Name</label>
-          <input id="businessName" type="text" placeholder="e.g., Pristine Green" required />
-
-          <label for="description">Business Description</label>
-          <textarea id="description" placeholder="What do you do?"></textarea>
-
-          <div class="row">
-            <div>
-              <label for="logo">Upload Logo</label>
-              <input id="logo" type="file" accept="image/*" />
-            </div>
-            <div>
-              <label for="gallery">Gallery Images</label>
-              <input id="gallery" type="file" accept="image/*" multiple />
-              <div class="hint">Basic preview: up to ~6 images for speed.</div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="email">Contact Email</label>
-              <input id="email" type="email" placeholder="hello@example.com" />
-            </div>
-            <div>
-              <label for="phone">Phone</label>
-              <input id="phone" type="text" placeholder="(555) 123-4567" />
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="instagram">Instagram URL</label>
-              <input id="instagram" type="url" placeholder="https://instagram.com/yourbrand" />
-            </div>
-            <div>
-              <label for="ctaText">CTA Button Text</label>
-              <input id="ctaText" type="text" placeholder="Contact Us" />
-            </div>
-          </div>
-
-          <h2>Background</h2>
-          <label for="bgType">Background Type</label>
-          <select id="bgType">
-            <option value="default" selected>Default (photo + gradient)</option>
-            <option value="image-upload">Upload Image</option>
-            <option value="image-url">Image URL</option>
-            <option value="gradient">Gradient</option>
-            <option value="solid">Solid Color</option>
-          </select>
-
-          <div class="row hide" id="bgUploadRow">
-            <div>
-              <label for="bgUpload">Upload Background Image</label>
-              <input id="bgUpload" type="file" accept="image/*" />
-            </div>
-            <div>
-              <label for="bgOverlay">Overlay Strength</label>
-              <input id="bgOverlay" type="range" min="0" max="90" value="55" />
-              <div class="hint">Dark overlay % (helps text stay readable)</div>
-            </div>
-          </div>
-
-          <div id="bgUrlRow" class="hide">
-            <label for="bgUrl">Image URL</label>
-            <input id="bgUrl" type="url" placeholder="https://example.com/background.jpg" />
-          </div>
-
-          <div class="row hide" id="bgGradientRow">
-            <div>
-              <label for="bgColor1">Color 1</label>
-              <input id="bgColor1" type="color" value="#0ea5e9" />
-            </div>
-            <div>
-              <label for="bgColor2">Color 2</label>
-              <input id="bgColor2" type="color" value="#2563eb" />
-            </div>
-          </div>
-
-          <div id="bgSolidRow" class="hide">
-            <label for="bgSolid">Solid Color</label>
-            <input id="bgSolid" type="color" value="#0b1221" />
-          </div>
-
-          <!-- ===== PRO FEATURES ===== -->
-          <h2>Pro Features</h2>
-          <label for="services">Services <span class="hint">(one per line)</span></label>
-          <textarea id="services" placeholder="Lawn care&#10;Trimming&#10;Fertilization"></textarea>
-
-          <label for="testimonials">Testimonials <span class="hint">(Name | Quote per line)</span></label>
-          <textarea id="testimonials" placeholder="Jane | These folks are amazing!&#10;Sam | Great quality and fast service."></textarea>
-
-          <div class="row">
-            <div>
-              <label for="hours">Hours <span class="hint">(one per line)</span></label>
-              <textarea id="hours" placeholder="Mon–Fri: 9am–5pm&#10;Sat: 10am–2pm"></textarea>
-            </div>
-            <div>
-              <label for="address">Address</label>
-              <input id="address" type="text" placeholder="123 Main St, Springfield" />
-            </div>
-          </div>
-
-          <!-- ===== BUSINESS FEATURES ===== -->
-          <h2>Business Features</h2>
-          <div class="row3">
-            <div>
-              <label for="template">Theme / Template</label>
-              <select id="template">
-                <option value="classic" selected>Classic</option>
-                <option value="bold">Bold</option>
-                <option value="minimal">Minimal</option>
-              </select>
-            </div>
-            <div>
-              <label for="palette">Palette</label>
-              <select id="palette">
-                <option value="blue" selected>Blue</option>
-                <option value="emerald">Emerald</option>
-                <option value="rose">Rose</option>
-                <option value="slate">Slate</option>
-              </select>
-            </div>
-            <div>
-              <label for="brandColor">Custom Brand Color</label>
-              <input id="brandColor" type="color" value="#2563eb" />
-            </div>
-          </div>
-
-          <h2>SEO & Analytics</h2>
-          <label for="seoTitle">SEO Title</label>
-          <input id="seoTitle" type="text" placeholder="Best Lawn Care in Springfield | Pristine Green" />
-
-          <label for="seoDescription">SEO Description</label>
-          <textarea id="seoDescription" placeholder="Professional lawn care & landscaping in Springfield. Free quotes, great reviews, and reliable service."></textarea>
-
-          <label for="gaId">Google Analytics ID <span class="hint">(e.g., G-XXXXXXXXX)</span></label>
-          <input id="gaId" type="text" placeholder="G-XXXXXXXXX" />
-
-          <!-- (Simple contact-form integration toggle if you want to use Formspree later) -->
-          <label for="formspree">Contact form provider <span class="hint">(optional)</span></label>
-          <select id="formspree">
-            <option value="">None</option>
-            <option value="formspree">Formspree</option>
-          </select>
-
-          <div class="btnBar">
-            <button type="submit">Generate Website (Preview)</button>
-            <button type="button" id="checkoutBtn" class="secondary">Buy Selected Plan</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2>Live Preview</h2>
-        <div id="previewArea" class="muted">Fill the form and press “Generate Website (Preview)”.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Pricing Modal -->
-  <div class="pricing-backdrop" id="pricingBackdrop"></div>
-  <div class="pricing-modal" id="pricingModal" aria-hidden="true">
-    <div class="pricing-sheet" role="dialog" aria-modal="true" aria-labelledby="pricingTitle">
-      <div class="pricing-header">
-        <div class="pricing-title" id="pricingTitle">Choose the right plan</div>
-        <button class="pricing-close" id="pricingClose">Close</button>
-      </div>
-      <div class="pricing-grid" id="pricingGrid"></div>
-    </div>
-  </div>
-
-  <!-- Lead FAB & Modal -->
-  <button class="fab" id="openLead">Get a quote</button>
-  <div class="lead-backdrop" id="leadBackdrop"></div>
-  <div class="lead-modal" id="leadModal" aria-hidden="true">
-    <div class="lead-sheet">
-      <h3 style="margin:0 0 12px">Get a quick quote</h3>
-      <form id="leadForm">
-        <label for="leadName">Your Name</label>
-        <input id="leadName" type="text" placeholder="Jane Doe" required />
-
-        <label for="leadEmail">Email</label>
-        <input id="leadEmail" type="email" placeholder="jane@email.com" />
-
-        <label for="leadPhone">Phone</label>
-        <input id="leadPhone" type="text" placeholder="(555) 555-5555" />
-
-        <label for="leadMsg">What do you need?</label>
-        <textarea id="leadMsg" placeholder="Briefly describe your project…" required></textarea>
-
-        <div class="lead-actions">
-          <button type="button" id="leadCancel" class="secondary">Cancel</button>
-          <button type="submit">Send</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="toast" id="toast">Thanks! We’ll get back to you shortly.</div>
-
-  <script src="builder.js"></script>
+  <section class="card">
+    <h2>Contact</h2>
+    ${contactBits || "<p>Reach out any time.</p>"}
+  </section>
+</main>
+<footer>© ${new Date().getFullYear()} ${escapeHtml(site.businessName)}. All rights reserved.</footer>
+</div>
 </body>
-</html>
+</html>`;
+}
+
+/* ---------- Robots & Sitemap ---------- */
+function buildSitemap(site) {
+  const base = (site.siteUrl || "https://example.com").replace(/\/+$/, "");
+  const urls = [`${base}/`];
+  const now = new Date().toISOString();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${urls
+    .map(
+      (u) =>
+        `<url><loc>${u}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+    )
+    .join("\n  ")}
+</urlset>`;
+}
+
+function buildRobots(site) {
+  const allowIndex = site.plan === "business" && !!site.allowIndexing;
+  const base = (site.siteUrl || "").replace(/\/+$/, "");
+  const sitemapLine = base ? `Sitemap: ${base}/sitemap.xml` : "";
+  return `${allowIndex ? "User-agent: *\nAllow: /" : "User-agent: *\nDisallow: /"}
+${sitemapLine}`;
+}
+
+/* ---------- Collect Form → Site Object ---------- */
+async function collectSiteData() {
+  // Plan
+  const plan = currentPlan();
+
+  // Core
+  const businessName = val("businessName");
+  const description = val("businessDescription");
+  const email = val("email");
+  const phone = val("phone");
+  const instagram = val("instagram");
+  const ctaText = val("ctaText");
+
+  // Logo
+  let logoDataURL = "";
+  const logoFile = $("logo")?.files?.[0];
+  if (logoFile) logoDataURL = await fileToDataURL(logoFile);
+
+  // Gallery (limit 8 for speed; skip huge files > ~1.8MB)
+  const galleryDataURLs = [];
+  const galleryFiles = $("gallery")?.files ? Array.from($("gallery").files) : [];
+  for (const f of galleryFiles.slice(0, 8)) {
+    if (f.size <= 1.8 * 1024 * 1024) {
+      galleryDataURLs.push(await fileToDataURL(f));
+    }
+  }
+
+  // Background
+  const bgType = $("bgType")?.value || "default";
+  let bgImage = "";
+  if (bgType === "image-upload") {
+    const f = $("bgUpload")?.files?.[0];
+    if (f) bgImage = await fileToDataURL(f);
+  } else if (bgType === "image-url") {
+    bgImage = val("bgUrl");
+  }
+  const overlayPct = parseInt($("bgOverlay")?.value || "55", 10);
+  const bg = {
+    type: bgType,
+    image: bgImage,
+    color1: $("bgColor1")?.value || "#0ea5e9",
+    color2: $("bgColor2")?.value || "#2563eb",
+    solid: $("bgSolid")?.value || "#0b1221",
+    overlay: isNaN(overlayPct) ? 0.55 : Math.max(0, Math.min(0.9, overlayPct / 100)),
+  };
+
+  // Palette / Brand
+  const palette = $("palette")?.value || "blue";
+  const brandColor = $("brandColor")?.value || "";
+  const colors = paletteToColors(palette, brandColor);
+
+  // Pro
+  const isPro = plan === "pro" || plan === "business";
+  const services = isPro ? splitLines(val("services")) : [];
+  const testimonials = isPro ? splitTestimonials(val("testimonials")) : [];
+  const hours = isPro ? splitLines(val("hours")) : [];
+  const address = isPro ? val("address") : "";
+  const formspree = isPro ? val("formspree") : "";
+
+  // Business (SEO)
+  const isBiz = plan === "business";
+  const seoTitle = isBiz ? val("seoTitle") : "";
+  const seoDescription = isBiz ? val("seoDescription") : "";
+  const gaId = isBiz ? val("gaId") : "";
+  const allowIndexing = isBiz ? !!$("allowIndexing")?.checked : false;
+  const siteUrl = isBiz ? val("siteUrl") : "";
+  const gscToken = isBiz ? val("gscToken") : "";
+  const template = isBiz ? $("template")?.value || "classic" : "classic";
+
+  return {
+    plan,
+    businessName,
+    description,
+    email,
+    phone,
+    instagram,
+    ctaText,
+    logoDataURL,
+    galleryDataURLs,
+    bg,
+    colors,
+    services,
+    testimonials,
+    hours,
+    address,
+    formspree,
+    // business
+    template,
+    seoTitle,
+    seoDescription,
+    gaId,
+    allowIndexing,
+    siteUrl,
+    gscToken,
+  };
+}
+
+function splitLines(text) {
+  return (text || "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+function splitTestimonials(text) {
+  return splitLines(text).map((row) => {
+    const [name, quote] = row.split("|").map((s) => (s || "").trim());
+    if (!name || !quote) return null;
+    return { name, quote };
+  }).filter(Boolean);
+}
+
+/* ---------- Preview + ZIP ---------- */
+async function handleGenerate(e) {
+  e.preventDefault();
+
+  const site = await collectSiteData();
+
+  // Build HTML
+  const html = buildPageHTML(site);
+
+  // Live preview
+  const iframe = $("preview");
+  if (iframe) iframe.srcdoc = html;
+
+  // Build ZIP (index.html + robots.txt + sitemap.xml)
+  if (window.JSZip) {
+    const zip = new JSZip();
+    zip.file("index.html", html);
+    zip.file("robots.txt", buildRobots(site));
+    zip.file("sitemap.xml", buildSitemap(site));
+
+    const blob = await zip.generateAsync({ type: "blob" });
+    const link = $("downloadLink");
+    if (link) {
+      link.href = URL.createObjectURL(blob);
+      link.download = "website.zip";
+      link.style.display = "inline-block";
+    }
+  } else {
+    alert("JSZip not loaded — cannot prepare download.");
+  }
+}
+
+/* ---------- Init ---------- */
+document.addEventListener("DOMContentLoaded", () => {
+  // Plan gating
+  applyPlanLocks();
+  document.getElementById("planForm")?.addEventListener("change", (e) => {
+    if (e.target?.name === "plan") applyPlanLocks();
+  });
+
+  // Background UI
+  updateBgUI();
+  $("bgType")?.addEventListener("change", updateBgUI);
+
+  // Form submit -> preview + zip
+  $("siteForm")?.addEventListener("submit", handleGenerate);
+});
