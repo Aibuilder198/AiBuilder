@@ -2,11 +2,14 @@
   "name": "ai-website-builder",
   "private": true,
   "version": "1.0.0",
-  "description": "Static AI website builder with Netlify Functions for Stripe checkout",
+  "description": "AI Website Builder with plan gating and AI Logo Maker",
+  "license": "MIT",
   "scripts": {
-    "build": "echo \"static site\" && exit 0"
+    "build": "echo 'static build'",
+    "netlify-build": "echo 'Netlify will bundle functions'"
   },
   "dependencies": {
+    "openai": "^4.52.0",
     "stripe": "^16.0.0"
   }
 }
