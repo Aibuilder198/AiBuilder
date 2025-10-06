@@ -1,311 +1,261 @@
-// builder.js
-// Frontend logic: plans, preview, AI logo, theme, checkout, download
+/* ====== PRICES (replace with your live Stripe price IDs) ====== */
+const PRICE_BASIC_ONE_TIME = "price_1SDFSNAmJkffDNdt0pAhcn8Y"; // $20 one-time
+const PRICE_PRO_MONTHLY    = "price_1SDbHKAmJkffDNdtYP9sVw1T"; // $29/mo
+const PRICE_BIZ_MONTHLY    = "price_1SDbI1AmJkffDNdtjiqSI7qF"; // $79/mo
 
-// === Stripe ===
-const stripe = Stripe("pk_test_1234567890"); // TODO: replace with your publishable key
-
-// === Stripe Price IDs ===
-const PLAN_PRICES = {
-  basic_one_time: "price_20dollarOneTimeID",               // TODO: replace with your real $20 one-time
-  pro_monthly:    "price_1SDbHKAmJkffDNdtYP9sVw1T",        // $29/mo
-  biz_monthly:    "price_1SDbI1AmJkffDNdtjiqSI7qF"         // $79/mo
-};
-
-// === Elements ===
+/* ====== ELEMENTS ====== */
 const planInputs   = document.querySelectorAll('input[name="plan"]');
 const buyBtn       = document.getElementById("buyBtn");
 const previewBtn   = document.getElementById("previewBtn");
-const previewBtn2  = document.getElementById("previewBtn2");
 const downloadBtn  = document.getElementById("downloadBtn");
-const downloadBtn2 = document.getElementById("downloadBtn2");
-const previewEl    = document.getElementById("preview");
+const sitePreview  = document.getElementById("sitePreview");
 
-// Branding & theme
-const themeSel     = document.getElementById("theme");
-const paletteSel   = document.getElementById("palette");
-const brandColor   = document.getElementById("brandColor");
-const bgType       = document.getElementById("bgType");
-const bgUploadRow  = document.getElementById("bgUploadRow");
-const bgImageFile  = document.getElementById("bgImage");
+const bizName      = document.getElementById("bizName");
+const bizDesc      = document.getElementById("bizDesc");
+const services     = document.getElementById("services");
+const testimonials = document.getElementById("testimonials");
 
-// Logo + AI logo
 const logoFile     = document.getElementById("logoFile");
 const logoPreview  = document.getElementById("logoPreview");
-const genLogoBtn   = document.getElementById("genLogoBtn");
-const logoGallery  = document.getElementById("logoGallery");
+const galleryFiles = document.getElementById("galleryFiles");
+
+// SEO
+const seoTitle     = document.getElementById("seoTitle");
+const seoDesc      = document.getElementById("seoDesc");
+const gaId         = document.getElementById("gaId");
+const canonicalUrl = document.getElementById("canonicalUrl");
+const allowIndex   = document.getElementById("allowIndex");
+
+// AI logo
+const aiPanel      = document.getElementById("aiLogoPanel");
 const aiBrand      = document.getElementById("aiBrand");
 const aiSlogan     = document.getElementById("aiSlogan");
 const aiIndustry   = document.getElementById("aiIndustry");
 const aiStyle      = document.getElementById("aiStyle");
 const aiColors     = document.getElementById("aiColors");
+const genLogoBtn   = document.getElementById("genLogoBtn");
+const logoGallery  = document.getElementById("logoGallery");
 
-// Panels gated by plan
-const brandingPanel = document.getElementById("brandingPanel");
-const seoPanel      = document.getElementById("seoPanel");
+/* ====== STATE & UTIL ====== */
+let unlocked = false; // set to true after verified success page
+const sleep = (ms) => new Promise(r=>setTimeout(r,ms));
 
-let selectedPlan = "basic_one_time";
-let uploadedBgDataUrl = "";
-let uploadedLogoDataUrl = "";
-
-// === Plan gating ===
-function applyPlanGating() {
-  const isPro  = selectedPlan === "pro_monthly" || selectedPlan === "biz_monthly";
-  const isBiz  = selectedPlan === "biz_monthly";
-
-  // Branding & Theme mostly for Business (we still let Basic set logo)
-  themeSel.disabled    = !isBiz;
-  paletteSel.disabled  = !isBiz;
-  brandColor.disabled  = !isBiz;
-  bgType.disabled      = !isBiz;
-  bgImageFile.disabled = !isBiz;
-
-  brandingPanel.style.opacity = isBiz ? 1 : 0.6;
-
-  // AI Logo unlocked on Pro/Business
-  genLogoBtn.disabled = !isPro;
-  aiBrand.disabled    = !isPro;
-  aiSlogan.disabled   = !isPro;
-  aiIndustry.disabled = !isPro;
-  aiStyle.disabled    = !isPro;
-  aiColors.disabled   = !isPro;
-
-  // SEO/Analytics only Business
-  seoPanel.style.opacity = isBiz ? 1 : 0.5;
-  [...seoPanel.querySelectorAll("input,textarea,button")].forEach(el => {
-    if (el.id === "downloadBtn2" || el.id === "previewBtn2") return;
-    el.disabled = !isBiz;
-  });
+function selectedPlan() {
+  return [...planInputs].find(r => r.checked)?.value || "basic_one_time";
 }
-planInputs.forEach(r => r.addEventListener("change", () => {
-  selectedPlan = r.value;
-  applyPlanGating();
-}));
+
+function applyPlanGating() {
+  const plan = selectedPlan();
+  const proOrBiz = (plan === "pro_monthly" || plan === "biz_monthly");
+  if (aiPanel) {
+    aiPanel.style.display = proOrBiz ? "" : "none";
+    genLogoBtn.disabled = !proOrBiz;
+  }
+}
+planInputs.forEach(r => r.addEventListener("change", applyPlanGating));
 applyPlanGating();
 
-// === Background control ===
-bgType?.addEventListener("change", () => {
-  bgUploadRow.style.display = bgType.value === "image" ? "" : "none";
-});
-bgImageFile?.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0]; if (!f) return;
-  uploadedBgDataUrl = await fileToDataURL(f);
-});
-
-// === Logo upload ===
-logoFile?.addEventListener("change", async (e) => {
-  const f = e.target.files?.[0]; if (!f) return;
-  uploadedLogoDataUrl = await fileToDataURL(f);
-  logoPreview.src = uploadedLogoDataUrl;
+/* ====== LOGO PREVIEW ====== */
+logoFile?.addEventListener("change", (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  logoPreview.src = url;
 });
 
-// === AI Logo Maker ===
-genLogoBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  if (genLogoBtn.disabled) {
-    alert("AI Logo Maker is available on Pro and Business plans.");
+/* ====== PREVIEW GENERATION ====== */
+function htmlEscape(s=""){ return s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])) }
+function linesToList(lines="") {
+  const items = lines.split("\n").map(s=>s.trim()).filter(Boolean);
+  if (!items.length) return "";
+  return `<ul>${items.map(li=>`<li>${htmlEscape(li)}</li>`).join("")}</ul>`;
+}
+function testimonialsToCards(text="") {
+  const items = text.split("\n").map(s=>s.trim()).filter(Boolean);
+  if (!items.length) return "";
+  return `<div class="tcards">${items.map(row=>{
+    const [name, quote] = row.split("|").map(s=>s?.trim()||"");
+    return `<div class="tcard"><blockquote>${htmlEscape(quote)}</blockquote><div class="tname">— ${htmlEscape(name)}</div></div>`;
+  }).join("")}</div>`;
+}
+async function filesToDataUrls(fileList, max=6) {
+  if (!fileList) return [];
+  const files = [...fileList].slice(0,max);
+  const arr = [];
+  for (const f of files) {
+    arr.push(await fileToDataUrl(f));
+  }
+  return arr;
+}
+function fileToDataUrl(file) {
+  return new Promise((resolve,reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+async function buildSiteHtml() {
+  const name = bizName.value || "My Business";
+  const desc = bizDesc.value || "";
+
+  const svcList  = linesToList(services.value);
+  const testiDom = testimonialsToCards(testimonials.value);
+
+  const logoSrc = logoPreview.src || "";
+
+  const gallery = await filesToDataUrls(galleryFiles.files, 6);
+  const galHtml = gallery.length
+    ? `<div class="grid">${gallery.map(src=>`<img src="${src}" alt="">`).join("")}</div>`
+    : "";
+
+  const headSeo = `
+    <title>${htmlEscape(seoTitle.value || name)}</title>
+    <meta name="description" content="${htmlEscape(seoDesc.value || desc)}" />
+    ${allowIndex.checked ? "" : '<meta name="robots" content="noindex,nofollow">'}
+    ${canonicalUrl.value ? `<link rel="canonical" href="${htmlEscape(canonicalUrl.value)}">` : ""}
+    ${gaId.value ? `
+      <script async src="https://www.googletagmanager.com/gtag/js?id=${htmlEscape(gaId.value)}"></script>
+      <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};gtag('js',new Date());gtag('config','${htmlEscape(gaId.value)}');</script>
+    ` : ""}
+  `;
+
+  const css = `
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto; margin:0; color:#0c1220; background:#f8fafc;}
+    header{display:flex; gap:12px; align-items:center; padding:22px; background:#0ea5e9; color:#fff;}
+    header img{width:48px;height:48px;object-fit:contain;background:#ffffff22;border-radius:8px}
+    main{max-width:900px;margin:20px auto;padding:0 16px}
+    section.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 5px 20px rgba(16,24,40,.06)}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .grid img{width:100%;height:160px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0}
+    .tcard{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
+    .tname{font-weight:600;color:#0f172a;margin-top:6px}
+    footer{padding:22px;color:#475569}
+  `;
+
+  return `
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+${headSeo}
+<style>${css}</style></head>
+<body>
+  <header>
+    ${logoSrc ? `<img src="${logoSrc}" alt="logo">` : ""}
+    <h1>${htmlEscape(name)}</h1>
+  </header>
+  <main>
+    <section class="card">
+      <h2>About Us</h2>
+      <p>${htmlEscape(desc)}</p>
+      ${svcList ? `<h3>Services</h3>${svcList}` : ""}
+    </section>
+
+    ${testiDom ? `<section class="card"><h2>Testimonials</h2>${testiDom}</section>` : ""}
+
+    ${galHtml ? `<section class="card"><h2>Gallery</h2>${galHtml}</section>` : ""}
+  </main>
+  <footer>© ${new Date().getFullYear()} ${htmlEscape(name)}. All rights reserved.</footer>
+</body></html>`;
+}
+
+async function updatePreview() {
+  const html = await buildSiteHtml();
+  const blob = new Blob([html], {type:"text/html"});
+  const url  = URL.createObjectURL(blob);
+  sitePreview.src = url;
+}
+previewBtn?.addEventListener("click", updatePreview);
+
+/* ====== DOWNLOAD ZIP (locked until payment) ====== */
+downloadBtn?.addEventListener("click", async () => {
+  if (!unlocked) {
+    alert("Download is locked. Complete payment first.");
     return;
   }
-  genLogoBtn.textContent = "Generating…"; genLogoBtn.disabled = true;
-  logoGallery.innerHTML = "";
+  const html = await buildSiteHtml();
+  const zipBlob = new Blob([html], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(zipBlob);
+  a.download = "site.html";
+  a.click();
+});
+
+/* ====== BUY FLOW (Stripe Checkout via Netlify function) ====== */
+buyBtn?.addEventListener("click", async () => {
+  const plan = selectedPlan();
+  const price =
+    plan === "pro_monthly" ? PRICE_PRO_MONTHLY :
+    plan === "biz_monthly" ? PRICE_BIZ_MONTHLY :
+    PRICE_BASIC_ONE_TIME;
 
   try {
-    const payload = {
-      brand: aiBrand.value.trim(),
-      slogan: aiSlogan.value.trim(),
-      industry: aiIndustry.value.trim(),
-      style: aiStyle.value.trim(),
-      colors: aiColors.value.trim()
-    };
+    buyBtn.disabled = true; buyBtn.textContent = "Opening checkout...";
+    const res = await fetch("/.netlify/functions/create-checkout", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        items: [{ price, quantity: 1 }],
+        success_url: `${window.location.origin}/success`,
+        cancel_url: `${window.location.origin}/cancel`
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to start checkout");
+    window.location.href = data.url;
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    buyBtn.disabled = false; buyBtn.textContent = "Buy & Unlock";
+  }
+});
+
+/* ====== SUCCESS PAGE VERIFICATION (optional) ======
+   If you add /success page with session verification, set unlocked=true there.
+   For now, leave manual. */
+
+/* ====== AI LOGO MAKER ====== */
+genLogoBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const plan = selectedPlan();
+  if (plan === "basic_one_time") {
+    return alert("AI Logo Maker is available on Pro/Business plans.");
+  }
+  genLogoBtn.disabled = true; genLogoBtn.textContent = "Generating…";
+  logoGallery.innerHTML = "";
+  try {
     const res = await fetch("/.netlify/functions/ai-logo", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        brand: aiBrand.value || bizName.value || "Brand",
+        slogan: aiSlogan.value || "",
+        industry: aiIndustry.value || "",
+        style: aiStyle.value || "Minimal",
+        colors: aiColors.value || ""
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Logo generation failed");
 
-    // Expect array of data URLs (PNG or SVG data URLs)
     (data.images || []).forEach(src => {
       const img = new Image();
-      img.src = src; img.style.width="72px"; img.style.height="72px";
-      img.style.borderRadius="12px"; img.style.border="1px solid #243148"; img.style.cursor="pointer";
-      img.addEventListener("click", () => {
-        uploadedLogoDataUrl = src;
-        logoPreview.src = src;
-      });
+      img.src = src;
+      img.style.width = "80px";
+      img.style.height = "80px";
+      img.style.border = "1px solid #22384f";
+      img.style.borderRadius = "12px";
+      img.style.cursor = "pointer";
+      img.title = "Click to use this logo";
+      img.onclick = () => logoPreview.src = src;
       logoGallery.appendChild(img);
     });
-
     if (!data.images?.length) {
-      logoGallery.innerHTML = `<span class="muted">No logos generated. Try different prompts/colors.</span>`;
+      logoGallery.innerHTML = '<span class="muted">No logos returned. Try changing style or colors.</span>';
     }
   } catch (err) {
     alert(err.message);
   } finally {
-    genLogoBtn.textContent = "Generate Logos"; genLogoBtn.disabled = false;
+    genLogoBtn.disabled = false; genLogoBtn.textContent = "Generate Logos";
   }
 });
-
-// === Preview ===
-function collectSiteData() {
-  return {
-    name:  (document.getElementById("businessName").value || "My Business").trim(),
-    desc:  (document.getElementById("businessDesc").value || "Business description here.").trim(),
-    services: (document.getElementById("services").value || "").split("\n").map(s=>s.trim()).filter(Boolean),
-    testimonials: (document.getElementById("testimonials").value || "").split("\n").map(s=>s.trim()).filter(Boolean),
-    // branding/theme
-    theme: themeSel?.value || "classic",
-    palette: paletteSel?.value || "blue",
-    brandColor: brandColor?.value || "#2563eb",
-    bgType: bgType?.value || "gradient",
-    bgDataUrl: uploadedBgDataUrl,
-    logoDataUrl: uploadedLogoDataUrl,
-    // seo
-    seoTitle: (document.getElementById("seoTitle")?.value || "").trim(),
-    seoDesc:  (document.getElementById("seoDesc")?.value || "").trim(),
-    gaId:     (document.getElementById("gaId")?.value || "").trim(),
-    canonUrl: (document.getElementById("canonUrl")?.value || "").trim(),
-    gscToken: (document.getElementById("gscToken")?.value || "").trim()
-  };
-}
-
-function renderPreview() {
-  const d = collectSiteData();
-
-  // background style
-  let bgStyle = "";
-  if (d.bgType === "image" && d.bgDataUrl) {
-    bgStyle = `background:#000 url('${d.bgDataUrl}') center/cover no-repeat;`;
-  } else {
-    bgStyle = `background:linear-gradient(180deg,#0b1220,#111827);`;
-  }
-
-  // color theme hint
-  const accent = d.brandColor || "#2563eb";
-  const servicesHTML = d.services.length ? `<h4>Services</h4><ul>${d.services.map(s=>`<li>${s}</li>`).join("")}</ul>` : "";
-  const testiHTML = d.testimonials.length ? `<h4>Testimonials</h4>${d.testimonials.map(t=>{
-    const [name, quote] = t.split("|").map(x=>x?.trim());
-    if (!name || !quote) return "";
-    return `<blockquote style="margin:8px 0;border-left:3px solid ${accent};padding-left:10px">“${quote}” — <strong>${name}</strong></blockquote>`;
-  }).join("")}` : "";
-
-  const logoTag = d.logoDataUrl ? `<img src="${d.logoDataUrl}" alt="logo" style="width:56px;height:56px;border-radius:12px;border:1px solid #243148;background:#0a1220;object-fit:contain">` : "";
-
-  previewEl.innerHTML = `
-    <div class="card" style="${bgStyle}">
-      <div class="brand-row" style="margin-bottom:14px">
-        ${logoTag}
-        <div>
-          <h2 style="margin:0 0 4px">${d.name}</h2>
-          <span class="muted">${d.theme} · ${d.palette}</span>
-        </div>
-      </div>
-      <p>${d.desc}</p>
-      ${servicesHTML}
-      ${testiHTML}
-      ${d.seoTitle ? `<p class="muted"><strong>SEO Title:</strong> ${d.seoTitle}</p>` : ""}
-      ${d.seoDesc ? `<p class="muted"><strong>SEO Description:</strong> ${d.seoDesc}</p>` : ""}
-    </div>
-  `;
-}
-
-function fileToDataURL(file) {
-  return new Promise((resolve,reject)=>{
-    const r = new FileReader();
-    r.onload = ()=>resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
-// === Checkout ===
-async function startCheckout() {
-  try {
-    buyBtn.disabled = true; buyBtn.textContent = "Opening checkout…";
-
-    const res = await fetch("/.netlify/functions/create-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        priceId: PLAN_PRICES[selectedPlan],
-        meta: JSON.stringify({
-          name: document.getElementById("businessName").value || "",
-          plan: selectedPlan
-        })
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data || "Failed to create session");
-
-    await stripe.redirectToCheckout({ sessionId: data.id });
-  } catch (e) {
-    alert("Failed to start checkout. Check your Netlify function and Stripe price IDs.\n\n" + e.message);
-  } finally {
-    buyBtn.disabled = false; buyBtn.textContent = "Buy & Unlock";
-  }
-}
-
-// === Verify & Download ===
-async function verifyPaid() {
-  const res = await fetch("/.netlify/functions/verify-session");
-  const data = await res.json();
-  return !!data.verified;
-}
-
-async function downloadSite() {
-  if (!(await verifyPaid())) {
-    alert("Please complete payment to unlock downloads.");
-    return;
-  }
-
-  const d = collectSiteData();
-  // Minimal export – quick single-file HTML (you can expand to full multi-file ZIP later)
-  const html = `<!doctype html><html><head>
-<meta charset="utf-8">
-<title>${d.seoTitle || d.name || "Website"}</title>
-<meta name="description" content="${escapeHtml(d.seoDesc)}">
-${d.gaId ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${d.gaId}"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};gtag('js',new Date());gtag('config','${d.gaId}');</script>`:""}
-${d.gscToken ? `<meta name="google-site-verification" content="${escapeHtml(d.gscToken)}">`:""}
-${d.canonUrl ? `<link rel="canonical" href="${escapeHtml(d.canonUrl)}">`:""}
-<style>
-body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:24px;background:#0b1220;color:#e5e7eb}
-.card{background:#111827cc;border:1px solid #243148;border-radius:16px;padding:16px}
-.brand-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}
-.brand-row img{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#0a1220;border:1px solid #243148}
-blockquote{margin:8px 0;border-left:3px solid ${d.brandColor};padding-left:10px}
-</style>
-</head><body>
-<div class="card" style="${d.bgType==='image'&&d.bgDataUrl?`background:#000 url('${d.bgDataUrl}') center/cover no-repeat;`:`background:linear-gradient(180deg,#0b1220,#111827);`}">
-  <div class="brand-row">
-    ${d.logoDataUrl?`<img src="${d.logoDataUrl}" alt="logo">`:""}
-    <div>
-      <h1 style="margin:0">${escapeHtml(d.name)}</h1>
-      <small>${escapeHtml(d.theme)} · ${escapeHtml(d.palette)}</small>
-    </div>
-  </div>
-  <p>${escapeHtml(d.desc)}</p>
-  ${d.services.length?`<h3>Services</h3><ul>${d.services.map(s=>`<li>${escapeHtml(s)}</li>`).join("")}</ul>`:""}
-  ${d.testimonials.length?`<h3>Testimonials</h3>${d.testimonials.map(t=>{const [n,q]=(t||"").split("|").map(x=>x?.trim());return n&&q?`<blockquote>“${escapeHtml(q)}” — <strong>${escapeHtml(n)}</strong></blockquote>`:""}).join("")}`:""}
-</div>
-</body></html>`;
-
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "website.html"; document.body.appendChild(a); a.click(); a.remove();
-}
-
-function escapeHtml(s=""){return s.replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-
-// === Events ===
-planInputs.forEach(r => r.addEventListener("change", e => { selectedPlan = e.target.value; applyPlanGating(); }));
-previewBtn?.addEventListener("click", (e)=>{ e.preventDefault(); renderPreview(); });
-previewBtn2?.addEventListener("click",(e)=>{ e.preventDefault(); renderPreview(); });
-buyBtn?.addEventListener("click",(e)=>{ e.preventDefault(); startCheckout(); });
-downloadBtn?.addEventListener("click",(e)=>{ e.preventDefault(); downloadSite(); });
-downloadBtn2?.addEventListener("click",(e)=>{ e.preventDefault(); downloadSite(); });
-
-// Initial preview
-renderPreview();
-console.log("builder.js ready");
